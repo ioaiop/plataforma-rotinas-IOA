@@ -63,7 +63,8 @@ export default function DashboardPage() {
       .from("tasks")
       .select("status")
       .lte("date_start", todayStr)
-      .gte("date_end", todayStr);
+      .gte("date_end", todayStr)
+      .eq("unit_id", profileData.unit_id);
 
     if (isSupervisor) {
       statsQuery = statsQuery.eq("sector_id", profileData.sector_id);
@@ -88,6 +89,7 @@ export default function DashboardPage() {
       .select("*, profiles!tasks_assigned_to_fkey(full_name), sectors(name)")
       .lte("date_start", todayStr)
       .gte("date_end", todayStr)
+      .eq("unit_id", profileData.unit_id)
       .order("created_at");
 
     if (isSupervisor) {
@@ -101,16 +103,15 @@ export default function DashboardPage() {
 
     let historyQuery = supabase
       .from("history")
-      .select("*, profiles(full_name), tasks!inner(title, sector_id)")
+      .select("*, profiles(full_name), tasks!inner(title, sector_id, unit_id)")
+      .eq("tasks.unit_id", profileData.unit_id)
       .order("created_at", { ascending: false })
       .limit(5);
 
-    // 👤 usuário comum
     if (!isAdmin && !isSupervisor) {
       historyQuery = historyQuery.eq("user_id", user.id);
     }
 
-    // 👨‍💼 supervisor (filtra por setor)
     if (isSupervisor) {
       historyQuery = historyQuery.eq("tasks.sector_id", profileData.sector_id);
     }
@@ -122,7 +123,8 @@ export default function DashboardPage() {
         .from("tasks")
         .select("status, assigned_users, assigned_to, sector_id")
         .lte("date_start", todayStr)
-        .gte("date_end", todayStr);
+        .gte("date_end", todayStr)
+        .eq("unit_id", profileData.unit_id);
 
       if (isSupervisor) {
         perfTasks = perfTasks?.filter(
@@ -203,7 +205,8 @@ export default function DashboardPage() {
         .from("tasks")
         .select("status, date_start, date_end, sector_id")
         .lte("date_start", weekDays[weekDays.length - 1])
-        .gte("date_end", weekDays[0]);
+        .gte("date_end", weekDays[0])
+        .eq("unit_id", profileData.unit_id);
 
       if (isSupervisor) {
         weekTasks = weekTasks?.filter(
@@ -294,11 +297,18 @@ export default function DashboardPage() {
     }
 
     // Busca tarefas do período
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("unit_id")
+      .eq("id", (await supabase.auth.getUser()).data.user.id)
+      .single();
+
     const { data: reportTasks } = await supabase
       .from("tasks")
       .select("*, profiles!tasks_assigned_to_fkey(full_name), sectors(name)")
       .lte("date_start", dateEnd)
       .gte("date_end", dateStart)
+      .eq("unit_id", profileData.unit_id)
       .order("date_start");
 
     const tasks = reportTasks || [];

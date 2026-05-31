@@ -43,10 +43,15 @@ export default function UsersPage() {
     const { data: sectorsData } = await supabase
       .from("sectors")
       .select("*")
+      .eq("unit_id", profile.unit_id)
       .order("name");
     setSectors(sectorsData || []);
 
-    let query = supabase.from("profiles").select("*").order("full_name");
+    let query = supabase
+      .from("profiles")
+      .select("*")
+      .eq("unit_id", profile.unit_id)
+      .order("full_name");
 
     // Supervisor só vê funcionários do mesmo setor
     if (profile?.role === "supervisor" && profile?.sector_id) {
@@ -118,6 +123,7 @@ export default function UsersPage() {
           currentProfile?.role === "supervisor"
             ? currentProfile.sector_id
             : form.sector_id,
+        unit_id: currentProfile.unit_id,
       };
 
       const res = await fetch("/api/create-user", {

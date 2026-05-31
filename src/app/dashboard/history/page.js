@@ -32,7 +32,8 @@ export default function HistoryPage() {
 
     let query = supabase
       .from("history")
-      .select("*, profiles(full_name, avatar_url), tasks(title)")
+      .select("*, profiles(full_name, avatar_url), tasks!inner(title, unit_id)")
+      .eq("tasks.unit_id", profileData.unit_id)
       .order("created_at", { ascending: false })
       .limit(200);
 
@@ -47,6 +48,7 @@ export default function HistoryPage() {
       const { data: usersData } = await supabase
         .from("profiles")
         .select("id, full_name")
+        .eq("unit_id", profileData.unit_id)
         .order("full_name");
       setUsers(usersData || []);
     }

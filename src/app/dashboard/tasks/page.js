@@ -97,6 +97,7 @@ function TasksContent() {
       )
       .lte("date_start", selectedDate)
       .gte("date_end", selectedDate)
+      .eq("unit_id", profileData.unit_id)
       .order("created_at");
 
     if (profileData?.role === "employee") {

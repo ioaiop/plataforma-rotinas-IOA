@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
-  const { full_name, email, password, role, position, sector_id } =
+  const { full_name, email, password, role, position, sector_id, unit_id } =
     await request.json();
 
   const supabase = createClient(
@@ -27,6 +27,7 @@ export async function POST(request) {
     role,
     position,
     sector_id: sector_id || null,
+    unit_id: unit_id || null,
   });
 
   if (profileError) {

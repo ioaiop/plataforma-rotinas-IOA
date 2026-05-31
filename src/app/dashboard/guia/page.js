@@ -104,7 +104,7 @@ const guia = {
           "O supervisor visualiza e gerencia apenas os funcionários do seu setor.",
           'É possível criar novos funcionários clicando em "+ Novo usuário".',
           "Supervisores não podem alterar o nível de acesso nem excluir usuários.",
-          "Ao criar um usuário, o setor já é preenchido automaticamente com o seu setor.",
+          "Ao criar um usuário, o setor já é preenchido automaticamente com o seu setor do supervisor.",
         ],
       },
       {

@@ -71,16 +71,15 @@ export default function ManagePage() {
     const isAdmin = profile?.role === "admin";
     const isSupervisor = profile?.role === "supervisor";
 
-    // 👉 QUERY BASE
     let tasksQuery = supabase
       .from("tasks")
       .select("*, profiles!tasks_assigned_to_fkey(full_name), sectors(name)", {
         count: "exact",
       })
+      .eq("unit_id", profile.unit_id)
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    // 👉 FILTRO POR SETOR (SÓ SUPERVISOR)
     if (isSupervisor) {
       tasksQuery = tasksQuery.eq("sector_id", profile.sector_id);
     }
@@ -92,13 +91,15 @@ export default function ManagePage() {
 
     const { data: usersData } = await supabase
       .from("profiles")
-      .select("id, full_name, sector")
+      .select("id, full_name, sector_id")
+      .eq("unit_id", profile.unit_id)
       .order("full_name");
     setUsers(usersData || []);
 
     const { data: sectorsData } = await supabase
       .from("sectors")
       .select("*")
+      .eq("unit_id", profile.unit_id)
       .order("name");
     setSectors(sectorsData || []);
   }
@@ -217,6 +218,7 @@ export default function ManagePage() {
           date_end: form.date_end || form.date_start,
           created_by: user.id,
           status: "pending",
+          unit_id: currentProfile.unit_id,
         })
         .select()
         .single();
@@ -266,7 +268,7 @@ export default function ManagePage() {
     if (!newSector.trim()) return;
     const { error } = await supabase
       .from("sectors")
-      .insert({ name: newSector.trim() });
+      .insert({ name: newSector.trim(), unit_id: currentProfile.unit_id });
     if (!error) {
       setNewSector("");
       setShowSectorForm(false);
