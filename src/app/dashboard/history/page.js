@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase";
+import { loadHistoryData } from "@/lib/services/historyService";
 
 export default function HistoryPage() {
-  const supabase = createClient();
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState(null);
   const [filterUser, setFilterUser] = useState("");
@@ -18,41 +17,11 @@ export default function HistoryPage() {
 
   async function loadData() {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    setProfile(profileData);
-
-    let query = supabase
-      .from("history")
-      .select("*, profiles(full_name, avatar_url), tasks!inner(title, unit_id)")
-      .eq("tasks.unit_id", profileData.unit_id)
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    if (profileData?.role === "employee") {
-      query = query.eq("user_id", user.id);
-    }
-
-    const { data: historyData } = await query;
-    setHistory(historyData || []);
-
-    if (profileData?.role !== "employee") {
-      const { data: usersData } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("unit_id", profileData.unit_id)
-        .order("full_name");
-      setUsers(usersData || []);
-    }
-
+    const result = await loadHistoryData();
+    if (!result) return;
+    setProfile(result.profile);
+    setHistory(result.history);
+    setUsers(result.users);
     setLoading(false);
   }
 
@@ -91,7 +60,6 @@ export default function HistoryPage() {
         <h1 className="text-2xl font-bold text-gray-800">Histórico</h1>
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-3 mb-6">
         {profile?.role !== "employee" && (
           <select
@@ -122,7 +90,6 @@ export default function HistoryPage() {
         </select>
       </div>
 
-      {/* Lista */}
       {loading ? (
         <p className="text-gray-400 text-sm">Carregando...</p>
       ) : (
@@ -133,7 +100,6 @@ export default function HistoryPage() {
                 key={item.id}
                 className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50"
               >
-                {/* Avatar */}
                 <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {item.profiles?.avatar_url ? (
                     <img
@@ -147,8 +113,6 @@ export default function HistoryPage() {
                     </span>
                   )}
                 </div>
-
-                {/* Conteúdo */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-800 text-sm">
@@ -177,7 +141,6 @@ export default function HistoryPage() {
                 </div>
               </div>
             ))}
-
             {filteredHistory.length === 0 && (
               <div className="px-6 py-8 text-center text-gray-400">
                 Nenhum registro encontrado.

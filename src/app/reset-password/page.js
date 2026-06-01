@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { updatePassword } from "@/lib/auth";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const supabase = createClient();
-
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,22 +20,18 @@ export default function ResetPasswordPage() {
       setError("As senhas não coincidem.");
       return;
     }
-
     if (password.length < 6) {
       setError("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
 
     setLoading(true);
-
-    const { error } = await supabase.auth.updateUser({ password });
-
+    const { error } = await updatePassword(password);
     if (error) {
       setError("Erro ao redefinir senha. Tente novamente.");
       setLoading(false);
       return;
     }
-
     setSuccess(true);
     setTimeout(() => router.push("/dashboard"), 3000);
   }
@@ -80,9 +74,7 @@ export default function ResetPasswordPage() {
                 required
               />
             </div>
-
             {error && <p className="text-red-500 text-sm">{error}</p>}
-
             <button
               type="submit"
               disabled={loading}

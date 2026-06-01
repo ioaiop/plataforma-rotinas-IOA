@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase";
+import { loadProfile, saveProfile } from "@/lib/services/profileService";
 
 export default function ProfilePage() {
-  const supabase = createClient();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -13,20 +12,11 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState(null);
 
   useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+    loadProfile().then((data) => {
+      if (!data) return;
       setProfile(data);
       if (data?.avatar_url) setAvatarPreview(data.avatar_url);
-    }
-    load();
+    });
   }, []);
 
   function handleAvatarChange(e) {
@@ -41,51 +31,15 @@ export default function ProfilePage() {
     setLoading(true);
     setError("");
     setSuccess(false);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    let avatar_url = profile.avatar_url;
-
-    // Upload da foto se houver nova
-    if (avatarFile) {
-      const fileExt = avatarFile.name.split(".").pop();
-      const fileName = `${user.id}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("attachments")
-        .upload(`avatars/${fileName}`, avatarFile, { upsert: true });
-
-      if (uploadError) {
-        setError("Erro ao enviar foto.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from("attachments")
-        .getPublicUrl(`avatars/${fileName}`);
-
-      avatar_url = urlData.publicUrl;
+    const { error, avatar_url } = await saveProfile(profile, avatarFile);
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({
-        full_name: profile.full_name,
-        position: profile.position,
-        sector: profile.sector,
-        avatar_url,
-      })
-      .eq("id", user.id);
-
-    if (updateError) {
-      setError("Erro ao salvar perfil.");
-    } else {
-      setSuccess(true);
-    }
-
+    setProfile((prev) => ({ ...prev, avatar_url }));
+    setAvatarFile(null);
+    setSuccess(true);
     setLoading(false);
   }
 
@@ -94,9 +48,7 @@ export default function ProfilePage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Meu Perfil</h1>
-
       <div className="bg-white rounded-2xl shadow-sm p-8 max-w-2xl">
-        {/* Foto */}
         <div className="flex items-center gap-6 mb-8">
           <div className="w-24 h-24 rounded-full bg-blue-100 overflow-hidden flex items-center justify-center">
             {avatarPreview ? (
@@ -141,7 +93,6 @@ export default function ProfilePage() {
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               E-mail
@@ -153,7 +104,6 @@ export default function ProfilePage() {
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Cargo / Função
@@ -167,21 +117,6 @@ export default function ProfilePage() {
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Setor
-            </label>
-            <input
-              type="text"
-              value={profile.sector || ""}
-              onChange={(e) =>
-                setProfile({ ...profile, sector: e.target.value })
-              }
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nível de acesso
@@ -199,12 +134,10 @@ export default function ProfilePage() {
               className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
             />
           </div>
-
           {error && <p className="text-red-500 text-sm">{error}</p>}
           {success && (
             <p className="text-green-600 text-sm">Perfil salvo com sucesso!</p>
           )}
-
           <button
             type="submit"
             disabled={loading}

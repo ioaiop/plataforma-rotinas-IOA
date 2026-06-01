@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { getUser, getProfile, signOut } from "@/lib/auth";
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/lib/db/notifications";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
   const [profile, setProfile] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -36,43 +40,26 @@ export default function DashboardLayout({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fecha sidebar ao trocar de página no celular
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
   async function loadProfile() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    const data = await getProfile(user.id);
     setProfile(data);
   }
 
   async function loadNotifications() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from("notifications")
-      .select("*, tasks(title)")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20);
-    setNotifications(data || []);
+    const data = await getNotifications(user.id);
+    setNotifications(data);
   }
 
   async function markAsRead(notif) {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("id", notif.id);
+    await markNotificationRead(notif.id);
     setNotifications((prev) =>
       prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)),
     );
@@ -81,18 +68,14 @@ export default function DashboardLayout({ children }) {
   }
 
   async function markAllAsRead() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", user.id);
+    const user = await getUser();
+    if (!user) return;
+    await markAllNotificationsRead(user.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await signOut();
     router.push("/login");
   }
 
@@ -109,15 +92,10 @@ export default function DashboardLayout({ children }) {
           { href: "/dashboard/history", label: "Histórico", icon: "📋" },
         ]
       : [{ href: "/dashboard/history", label: "Histórico", icon: "📋" }]),
-    { href: "/dashboard/manual", label: "Manual", icon: "📖" }, // 👈 aqui
+    { href: "/dashboard/manual", label: "Manual", icon: "📖" },
     { href: "/dashboard/instalar", label: "Instalar App", icon: "📲" },
     { href: "/dashboard/profile", label: "Meu Perfil", icon: "👤" },
-    {
-      href: "/dashboard/guia",
-      label: "Guia de Uso",
-      icon: "📖",
-      roles: ["admin", "supervisor", "employee"],
-    },
+    { href: "/dashboard/guia", label: "Guia de Uso", icon: "📖" },
   ];
 
   const notifIcon = (type) => {
@@ -131,7 +109,6 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
-      {/* Overlay para fechar sidebar no celular */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
@@ -139,7 +116,6 @@ export default function DashboardLayout({ children }) {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
         fixed h-full z-30 w-64 bg-blue-950 text-white flex flex-col transition-transform duration-300
@@ -154,7 +130,6 @@ export default function DashboardLayout({ children }) {
               alt="logo"
               className="w-10 h-10 rounded-xl object-cover"
             />
-
             <div>
               <p className="font-bold text-sm">Plataforma</p>
               <p className="text-blue-300 text-xs">de Rotinas</p>
@@ -218,11 +193,8 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      {/* Conteúdo principal */}
       <main className="flex-1 lg:ml-64 min-w-0">
-        {/* Barra superior */}
         <div className="flex items-center justify-between p-4 lg:p-6 lg:pb-0">
-          {/* Botão hamburguer — só no celular */}
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center hover:bg-gray-50 transition"
@@ -232,7 +204,6 @@ export default function DashboardLayout({ children }) {
 
           <div className="flex-1" />
 
-          {/* Sininho */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -300,7 +271,6 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* Conteúdo da página */}
         <div className="p-4 lg:p-8">{children}</div>
       </main>
     </div>

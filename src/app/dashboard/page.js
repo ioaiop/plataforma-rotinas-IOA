@@ -10,16 +10,24 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { createClient } from "@/lib/supabase";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
+import { getUser, getProfile } from "@/lib/auth";
+import {
+  getTaskStats,
+  getTasksByDate,
+  getPerformanceTasks,
+  getWeekTasks,
+  getTasksByPeriod,
+} from "@/lib/db/tasks";
+import { getProfilesByIds } from "@/lib/db/profiles";
+import { getRecentHistory } from "@/lib/db/history";
 
 export default function DashboardPage() {
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [performance, setPerformance] = useState([]);
   const [weekData, setWeekData] = useState([]);
-  const supabase = createClient();
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
@@ -35,6 +43,11 @@ export default function DashboardPage() {
   function formatDate(date) {
     return date.toISOString().split("T")[0];
   }
+  function formatDateBR(dateStr) {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split("-");
+    return `${d}/${m}/${y}`;
+  }
   const todayStr = formatDate(new Date());
 
   useEffect(() => {
@@ -42,99 +55,63 @@ export default function DashboardPage() {
   }, []);
 
   async function loadData() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return;
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    const profileData = await getProfile(user.id);
     setProfile(profileData);
 
-    const isAdmin = profileData?.role === "admin";
-    const isSupervisor = profileData?.role === "supervisor";
+    const admin = profileData?.role === "admin";
+    const supervisor = profileData?.role === "supervisor";
+    setIsAdmin(admin || supervisor);
 
-    setIsAdmin(isAdmin || isSupervisor);
+    // Stats
+    const allTasks = await getTaskStats(
+      todayStr,
+      profileData.unit_id,
+      profileData.role,
+      user.id,
+      profileData.sector_id,
+    );
+    setStats({
+      total: allTasks.length,
+      completed: allTasks.filter((t) => t.status === "completed").length,
+      pending: allTasks.filter((t) => t.status === "pending").length,
+      not_completed: allTasks.filter((t) => t.status === "not_completed")
+        .length,
+      in_progress: allTasks.filter((t) => t.status === "in_progress").length,
+    });
 
-    let statsQuery = supabase
-      .from("tasks")
-      .select("status")
-      .lte("date_start", todayStr)
-      .gte("date_end", todayStr)
-      .eq("unit_id", profileData.unit_id);
+    // Tarefas de hoje
+    const todayData = await getTasksByDate(
+      todayStr,
+      profileData.unit_id,
+      profileData.role,
+      user.id,
+      profileData.sector_id,
+    );
+    setTodayTasks(todayData);
 
-    if (isSupervisor) {
-      statsQuery = statsQuery.eq("sector_id", profileData.sector_id);
-    } else if (!isAdmin) {
-      statsQuery = statsQuery.contains("assigned_users", [user.id]);
-    }
-    const { data: allTasks } = await statsQuery;
+    // Histórico recente
+    const historyData = await getRecentHistory(
+      profileData.unit_id,
+      profileData.role,
+      user.id,
+      profileData.sector_id,
+    );
+    setRecentHistory(historyData);
 
-    if (allTasks) {
-      setStats({
-        total: allTasks.length,
-        completed: allTasks.filter((t) => t.status === "completed").length,
-        pending: allTasks.filter((t) => t.status === "pending").length,
-        not_completed: allTasks.filter((t) => t.status === "not_completed")
-          .length,
-        in_progress: allTasks.filter((t) => t.status === "in_progress").length,
-      });
-    }
-
-    let todayQuery = supabase
-      .from("tasks")
-      .select("*, profiles!tasks_assigned_to_fkey(full_name), sectors(name)")
-      .lte("date_start", todayStr)
-      .gte("date_end", todayStr)
-      .eq("unit_id", profileData.unit_id)
-      .order("created_at");
-
-    if (isSupervisor) {
-      todayQuery = todayQuery.eq("sector_id", profileData.sector_id);
-    } else if (!isAdmin) {
-      todayQuery = todayQuery.contains("assigned_users", [user.id]);
-    }
-
-    const { data: todayData } = await todayQuery;
-    setTodayTasks(todayData || []);
-
-    let historyQuery = supabase
-      .from("history")
-      .select("*, profiles(full_name), tasks!inner(title, sector_id, unit_id)")
-      .eq("tasks.unit_id", profileData.unit_id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (!isAdmin && !isSupervisor) {
-      historyQuery = historyQuery.eq("user_id", user.id);
-    }
-
-    if (isSupervisor) {
-      historyQuery = historyQuery.eq("tasks.sector_id", profileData.sector_id);
-    }
-
-    const { data: historyData } = await historyQuery;
-    setRecentHistory(historyData || []);
-    if (isAdmin || isSupervisor) {
-      let { data: perfTasks } = await supabase
-        .from("tasks")
-        .select("status, assigned_users, assigned_to, sector_id")
-        .lte("date_start", todayStr)
-        .gte("date_end", todayStr)
-        .eq("unit_id", profileData.unit_id);
-
-      if (isSupervisor) {
-        perfTasks = perfTasks?.filter(
+    // Performance e gráfico — só admin/supervisor
+    if (admin || supervisor) {
+      let perfTasks = await getPerformanceTasks(todayStr, profileData.unit_id);
+      if (supervisor)
+        perfTasks = perfTasks.filter(
           (t) => t.sector_id === profileData.sector_id,
         );
-      }
 
       const allUserIds = [
         ...new Set(
-          (perfTasks || []).flatMap((t) =>
+          perfTasks.flatMap((t) =>
             t.assigned_users?.length > 0
               ? t.assigned_users
               : t.assigned_to
@@ -144,56 +121,42 @@ export default function DashboardPage() {
         ),
       ];
 
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .in(
-          "id",
-          allUserIds.length > 0
-            ? allUserIds
-            : ["00000000-0000-0000-0000-000000000000"],
-        );
+      const profilesData =
+        allUserIds.length > 0 ? await getProfilesByIds(allUserIds) : [];
 
-      if (perfTasks) {
-        const map = {};
-        perfTasks.forEach((t) => {
-          const users =
-            t.assigned_users?.length > 0
-              ? t.assigned_users
-              : t.assigned_to
-                ? [t.assigned_to]
-                : [];
-          users.forEach((userId) => {
-            const profileInfo = (profilesData || []).find(
-              (p) => p.id === userId,
-            );
-            const name = profileInfo?.full_name || "—";
-            const avatar = profileInfo?.avatar_url || null;
-            if (!map[userId])
-              map[userId] = {
-                name,
-                avatar,
-                completed: 0,
-                pending: 0,
-                in_progress: 0,
-                not_completed: 0,
-                total: 0,
-              };
-            map[userId].total++;
-            if (t.status === "completed") map[userId].completed++;
-            else if (t.status === "pending") map[userId].pending++;
-            else if (t.status === "waiting_approval") map[userId].pending++;
-            else if (t.status === "in_progress") map[userId].in_progress++;
-            else if (t.status === "not_completed") map[userId].not_completed++;
-          });
+      const map = {};
+      perfTasks.forEach((t) => {
+        const users =
+          t.assigned_users?.length > 0
+            ? t.assigned_users
+            : t.assigned_to
+              ? [t.assigned_to]
+              : [];
+        users.forEach((userId) => {
+          const info = profilesData.find((p) => p.id === userId);
+          if (!map[userId])
+            map[userId] = {
+              name: info?.full_name || "—",
+              avatar: info?.avatar_url || null,
+              completed: 0,
+              pending: 0,
+              in_progress: 0,
+              not_completed: 0,
+              total: 0,
+            };
+          map[userId].total++;
+          if (t.status === "completed") map[userId].completed++;
+          else if (t.status === "pending" || t.status === "waiting_approval")
+            map[userId].pending++;
+          else if (t.status === "in_progress") map[userId].in_progress++;
+          else if (t.status === "not_completed") map[userId].not_completed++;
         });
-        const sorted = Object.values(map).sort(
-          (a, b) => b.completed - a.completed,
-        );
-        setPerformance(sorted);
-      }
-    }
-    if (isAdmin || isSupervisor) {
+      });
+      setPerformance(
+        Object.values(map).sort((a, b) => b.completed - a.completed),
+      );
+
+      // Gráfico semanal
       const weekDays = [];
       for (let i = 4; i >= 0; i--) {
         const d = new Date();
@@ -201,22 +164,19 @@ export default function DashboardPage() {
         weekDays.push(formatDate(d));
       }
 
-      let { data: weekTasks } = await supabase
-        .from("tasks")
-        .select("status, date_start, date_end, sector_id")
-        .lte("date_start", weekDays[weekDays.length - 1])
-        .gte("date_end", weekDays[0])
-        .eq("unit_id", profileData.unit_id);
-
-      if (isSupervisor) {
-        weekTasks = weekTasks?.filter(
+      let weekTasks = await getWeekTasks(
+        weekDays[0],
+        weekDays[weekDays.length - 1],
+        profileData.unit_id,
+      );
+      if (supervisor)
+        weekTasks = weekTasks.filter(
           (t) => t.sector_id === profileData.sector_id,
         );
-      }
 
-      if (weekTasks) {
-        const data = weekDays.map((dateStr) => {
-          const dayTasks = (weekTasks || []).filter(
+      setWeekData(
+        weekDays.map((dateStr) => {
+          const dayTasks = weekTasks.filter(
             (t) => t.date_start <= dateStr && t.date_end >= dateStr,
           );
           const [y, m, d] = dateStr.split("-");
@@ -227,14 +187,13 @@ export default function DashboardPage() {
               (t) => t.status === "pending" || t.status === "waiting_approval",
             ).length,
             "Em andamento": dayTasks.filter((t) => t.status === "in_progress")
-              .length, // 👈 AQUI
+              .length,
             "Não concluídas": dayTasks.filter(
               (t) => t.status === "not_completed",
             ).length,
           };
-        });
-        setWeekData(data);
-      }
+        }),
+      );
     }
   }
 
@@ -271,18 +230,10 @@ export default function DashboardPage() {
     return { start: formatDate(start), end: formatDate(end) };
   }
 
-  function formatDateBR(dateStr) {
-    if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
-  }
-
   async function generatePDF(tipo = "diario") {
     let dateStart, dateEnd, titulo;
-
     if (tipo === "diario") {
-      dateStart = todayStr;
-      dateEnd = todayStr;
+      dateStart = dateEnd = todayStr;
       titulo = `Relatório do dia — ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}`;
     } else if (tipo === "semanal") {
       const range = getWeekRange();
@@ -296,28 +247,9 @@ export default function DashboardPage() {
       titulo = `Relatório mensal — ${new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}`;
     }
 
-    // Busca tarefas do período
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("unit_id")
-      .eq("id", (await supabase.auth.getUser()).data.user.id)
-      .single();
+    const tasks = await getTasksByPeriod(dateStart, dateEnd, profile.unit_id);
+    const doc = new jsPDF({ orientation: "landscape" });
 
-    const { data: reportTasks } = await supabase
-      .from("tasks")
-      .select("*, profiles!tasks_assigned_to_fkey(full_name), sectors(name)")
-      .lte("date_start", dateEnd)
-      .gte("date_end", dateStart)
-      .eq("unit_id", profileData.unit_id)
-      .order("date_start");
-
-    const tasks = reportTasks || [];
-
-    const doc = new jsPDF({
-      orientation: "landscape",
-    });
-
-    // Cabeçalho
     doc.setFillColor(30, 58, 138);
     doc.rect(0, 0, doc.internal.pageSize.width, 35, "F");
     doc.setTextColor(255, 255, 255);
@@ -328,7 +260,6 @@ export default function DashboardPage() {
     doc.setFont("helvetica", "normal");
     doc.text(titulo, 14, 25);
 
-    // Resumo
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === "completed").length;
     const inProgress = tasks.filter((t) => t.status === "in_progress").length;
@@ -360,38 +291,35 @@ export default function DashboardPage() {
       margin: { left: 14, right: 14 },
     });
 
-    // Tarefas
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.text("Tarefas do período", 14, doc.lastAutoTable.finalY + 15);
-
-    const taskRows = tasks.map((task) => [
-      formatDateBR(task.date_start) +
-        (task.date_end !== task.date_start
-          ? ` a ${formatDateBR(task.date_end)}`
-          : ""),
-      task.title,
-      task.profiles?.full_name || "—",
-      task.sectors?.name || "—",
-      task.status === "completed"
-        ? "Concluída"
-        : task.status === "not_completed"
-          ? "Não concluída"
-          : task.status === "waiting_approval"
-            ? "Aguard. aprovação"
-            : task.status === "in_progress"
-              ? "Em andamento"
-              : "Pendente",
-      task.justification || "—",
-    ]);
 
     autoTable(doc, {
       startY: doc.lastAutoTable.finalY + 20,
       head: [
         ["Data", "Tarefa", "Responsável", "Setor", "Status", "Justificativa"],
       ],
-      body: taskRows,
+      body: tasks.map((task) => [
+        formatDateBR(task.date_start) +
+          (task.date_end !== task.date_start
+            ? ` a ${formatDateBR(task.date_end)}`
+            : ""),
+        task.title,
+        task.profiles?.full_name || "—",
+        task.sectors?.name || "—",
+        task.status === "completed"
+          ? "Concluída"
+          : task.status === "not_completed"
+            ? "Não concluída"
+            : task.status === "waiting_approval"
+              ? "Aguard. aprovação"
+              : task.status === "in_progress"
+                ? "Em andamento"
+                : "Pendente",
+        task.justification || "—",
+      ]),
       headStyles: { fillColor: [30, 58, 138], fontSize: 9 },
       bodyStyles: { fontSize: 9 },
       styles: { overflow: "linebreak", cellPadding: 2 },
@@ -406,7 +334,6 @@ export default function DashboardPage() {
       margin: { left: 14, right: 14 },
     });
 
-    // Rodapé
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -428,8 +355,6 @@ export default function DashboardPage() {
 
   return (
     <div>
-      {/* Cabeçalho */}
-
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
@@ -491,7 +416,6 @@ export default function DashboardPage() {
           >
             📋 Manual
           </Link>
-
           <button
             onClick={() => window.location.reload()}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2"
@@ -501,7 +425,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Cards de estatísticas */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {[
           {
@@ -552,7 +475,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Barra de progresso */}
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-semibold text-gray-700">
@@ -568,7 +490,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Tarefas de hoje + Atividade recente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-2xl shadow-sm p-4">
           <div className="flex items-center justify-between mb-4">
@@ -665,7 +586,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Desempenho por funcionário — só admin/supervisor */}
       {isAdmin && performance.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-5">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -684,7 +604,6 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {/* DESEMPENHO DE HOJE RANKING 3 PESSOAS */}
                 {performance.slice(0, 3).map((p) => (
                   <tr key={p.name} className="hover:bg-gray-50">
                     <td className="py-2">
@@ -730,7 +649,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Gráfico de produtividade semanal */}
       {isAdmin && weekData.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-5 mb-6">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -751,7 +669,6 @@ export default function DashboardPage() {
                 fill="#9333ea"
                 radius={[4, 4, 0, 0]}
               />
-
               <Bar dataKey="Pendentes" fill="#eab308" radius={[4, 4, 0, 0]} />
               <Bar
                 dataKey="Não concluídas"

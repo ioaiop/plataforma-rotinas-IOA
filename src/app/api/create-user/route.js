@@ -1,34 +1,23 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { createAuthUser, createUserProfile } from "@/lib/db/auth-admin";
 
 export async function POST(request) {
   const { full_name, email, password, role, position, sector_id, unit_id } =
     await request.json();
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-  );
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-
-  if (error) {
+  const { data, error } = await createAuthUser(email, password);
+  if (error)
     return NextResponse.json({ error: error.message }, { status: 400 });
-  }
 
-  const { error: profileError } = await supabase.from("profiles").insert({
-    id: data.user.id,
+  const { error: profileError } = await createUserProfile(
+    data.user.id,
     full_name,
     email,
     role,
     position,
-    sector_id: sector_id || null,
-    unit_id: unit_id || null,
-  });
+    sector_id,
+    unit_id,
+  );
 
   if (profileError) {
     return NextResponse.json(

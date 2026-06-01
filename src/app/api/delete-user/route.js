@@ -1,38 +1,24 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { deleteAuthUser, deleteUserProfile } from "@/lib/db/auth-admin";
 
 export async function POST(request) {
-  try {
-    const body = await request.json();
-    console.log("BODY:", body);
+  const { userId } = await request.json();
 
-    const { userId } = body;
-
-    if (!userId) {
-      console.log("USER ID NÃO VEIO");
-      return NextResponse.json(
-        { error: "userId não enviado" },
-        { status: 400 },
-      );
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
+  const { error: profileError } = await deleteUserProfile(userId);
+  if (profileError) {
+    return NextResponse.json(
+      { error: "Erro ao excluir perfil: " + profileError.message },
+      { status: 400 },
     );
-
-    const { error } = await supabase.auth.admin.deleteUser(userId);
-
-    if (error) {
-      console.log("ERRO SUPABASE:", error);
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    await supabase.from("profiles").delete().eq("id", userId);
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.log("ERRO GERAL:", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 400 });
   }
+
+  const { error: authError } = await deleteAuthUser(userId);
+  if (authError) {
+    return NextResponse.json(
+      { error: "Erro ao excluir usuário: " + authError.message },
+      { status: 400 },
+    );
+  }
+
+  return NextResponse.json({ success: true });
 }

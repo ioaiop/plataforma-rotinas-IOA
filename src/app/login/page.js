@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-
+import { signIn, signOut, resetPassword, getProfile } from "@/lib/auth";
 const UNITS = [
   {
     id: "4bde7bb3-abc3-49df-949d-91cc21c53b69",
@@ -27,8 +26,6 @@ const UNITS = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
-
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,10 +39,7 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await signIn(email, password);
 
     if (error) {
       setError("E-mail ou senha incorretos.");
@@ -53,15 +47,9 @@ export default function LoginPage() {
       return;
     }
 
-    // Verifica se o usuário pertence à unidade selecionada
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("unit_id")
-      .eq("id", data.user.id)
-      .single();
-
+    const profile = await getProfile(data.user.id);
     if (profile?.unit_id !== selectedUnit.id) {
-      await supabase.auth.signOut();
+      await signOut();
       setError(`Este usuário não pertence à unidade ${selectedUnit.name}.`);
       setLoading(false);
       return;
@@ -75,9 +63,10 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await resetPassword(
+      email,
+      `${window.location.origin}/reset-password`,
+    );
 
     if (error) {
       setError("Erro ao enviar e-mail. Verifique o endereço informado.");
@@ -89,7 +78,6 @@ export default function LoginPage() {
     setLoading(false);
   }
 
-  // Tela de seleção de unidade
   if (!selectedUnit) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-950 to-blue-800 flex items-center justify-center p-4">
@@ -109,13 +97,12 @@ export default function LoginPage() {
               Selecione sua unidade para continuar
             </p>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             {UNITS.map((unit) => (
               <button
                 key={unit.id}
                 onClick={() => setSelectedUnit(unit)}
-                className="bg-white rounded-2xl p-6 text-center hover:shadow-xl transition hover:scale-105 group"
+                className="bg-white rounded-2xl p-6 text-center hover:shadow-xl transition hover:scale-105"
               >
                 <div
                   className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${unit.color} flex items-center justify-center mx-auto mb-3`}
@@ -134,13 +121,11 @@ export default function LoginPage() {
     );
   }
 
-  // Tela de login
   return (
     <div
       className={`min-h-screen bg-gradient-to-br ${selectedUnit.color} flex items-center justify-center p-4`}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        {/* Logo / Título */}
         <div className="text-center mb-6">
           <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
             <img
@@ -170,17 +155,11 @@ export default function LoginPage() {
               Trocar
             </button>
           </div>
-          {!resetMode && (
-            <p className="text-gray-500 text-sm mt-2">
-              Faça login para continuar
-            </p>
-          )}
-          {resetMode && (
-            <p className="text-gray-500 text-sm mt-2">Recuperação de senha</p>
-          )}
+          <p className="text-gray-500 text-sm mt-2">
+            {resetMode ? "Recuperação de senha" : "Faça login para continuar"}
+          </p>
         </div>
 
-        {/* Formulário de Login */}
         {!resetMode && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -209,9 +188,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-
             {error && <p className="text-red-500 text-sm">{error}</p>}
-
             <button
               type="submit"
               disabled={loading}
@@ -219,7 +196,6 @@ export default function LoginPage() {
             >
               {loading ? "Entrando..." : "Entrar"}
             </button>
-
             <button
               type="button"
               onClick={() => {
@@ -233,7 +209,6 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Formulário de Recuperação */}
         {resetMode && !resetSent && (
           <form onSubmit={handleReset} className="space-y-4">
             <div>
@@ -249,9 +224,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-
             {error && <p className="text-red-500 text-sm">{error}</p>}
-
             <button
               type="submit"
               disabled={loading}
@@ -259,7 +232,6 @@ export default function LoginPage() {
             >
               {loading ? "Enviando..." : "Enviar link de recuperação"}
             </button>
-
             <button
               type="button"
               onClick={() => {
@@ -273,7 +245,6 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Confirmação de envio */}
         {resetMode && resetSent && (
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">

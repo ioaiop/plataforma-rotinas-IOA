@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase";
+import {
+  loadUsersData,
+  saveUser,
+  removeUser,
+} from "@/lib/services/userService";
 
 export default function UsersPage() {
-  const supabase = createClient();
   const [users, setUsers] = useState([]);
   const [sectors, setSectors] = useState([]);
   const [currentProfile, setCurrentProfile] = useState(null);
@@ -28,38 +31,11 @@ export default function UsersPage() {
   }, []);
 
   async function loadData() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    setCurrentProfile(profile);
-
-    const { data: sectorsData } = await supabase
-      .from("sectors")
-      .select("*")
-      .eq("unit_id", profile.unit_id)
-      .order("name");
-    setSectors(sectorsData || []);
-
-    let query = supabase
-      .from("profiles")
-      .select("*")
-      .eq("unit_id", profile.unit_id)
-      .order("full_name");
-
-    // Supervisor só vê funcionários do mesmo setor
-    if (profile?.role === "supervisor" && profile?.sector_id) {
-      query = query.eq("sector_id", profile.sector_id).eq("role", "employee");
-    }
-
-    const { data } = await query;
-    setUsers(data || []);
+    const result = await loadUsersData();
+    if (!result) return;
+    setCurrentProfile(result.profile);
+    setUsers(result.users);
+    setSectors(result.sectors);
   }
 
   function openNew() {
@@ -91,75 +67,32 @@ export default function UsersPage() {
     setLoading(true);
     setError("");
     setSuccess("");
-
-    if (editingUser) {
-      const updateData = {
-        full_name: form.full_name,
-        position: form.position,
-        sector_id: form.sector_id || null,
-      };
-
-      if (currentProfile?.role === "admin") {
-        updateData.role = form.role;
-      }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("id", editingUser.id);
-
-      if (error) {
-        setError("Erro ao atualizar usuário.");
-      } else {
-        setSuccess("Usuário atualizado com sucesso!");
-        loadData();
-      }
-    } else {
-      // Supervisor sempre cria como employee no seu setor
-      const payload = {
-        ...form,
-        role: currentProfile?.role === "supervisor" ? "employee" : form.role,
-        sector_id:
-          currentProfile?.role === "supervisor"
-            ? currentProfile.sector_id
-            : form.sector_id,
-        unit_id: currentProfile.unit_id,
-      };
-
-      const res = await fetch("/api/create-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        setError(result.error || "Erro ao criar usuário.");
-      } else {
-        setSuccess("Usuário criado com sucesso!");
-        loadData();
-        setShowForm(false);
-      }
+    const { error } = await saveUser(form, editingUser, currentProfile);
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
-
+    setSuccess(
+      editingUser
+        ? "Usuário atualizado com sucesso!"
+        : "Usuário criado com sucesso!",
+    );
+    loadData();
+    if (!editingUser) setShowForm(false);
     setLoading(false);
   }
 
   async function handleDelete(userId) {
     setLoading(true);
-    const res = await fetch("/api/delete-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      setError(result.error || "Erro ao excluir usuário.");
-    } else {
-      setShowDeleteConfirm(null);
-      loadData();
+    const { error } = await removeUser(userId);
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
+    setShowDeleteConfirm(null);
+    loadData();
     setLoading(false);
   }
 
@@ -177,10 +110,8 @@ export default function UsersPage() {
 
   const isAdmin = currentProfile?.role === "admin";
   const isSupervisor = currentProfile?.role === "supervisor";
-
-  const sectorName = (sector_id) => {
-    return sectors.find((s) => s.id === sector_id)?.name || "—";
-  };
+  const sectorName = (sector_id) =>
+    sectors.find((s) => s.id === sector_id)?.name || "—";
 
   return (
     <div>
@@ -206,7 +137,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Formulário */}
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -227,7 +157,6 @@ export default function UsersPage() {
                 required
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 E-mail
@@ -241,7 +170,6 @@ export default function UsersPage() {
                 required={!editingUser}
               />
             </div>
-
             {!editingUser && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -258,7 +186,6 @@ export default function UsersPage() {
                 />
               </div>
             )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nível de acesso
@@ -282,7 +209,6 @@ export default function UsersPage() {
                 />
               )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Cargo / Função
@@ -294,7 +220,6 @@ export default function UsersPage() {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Setor
@@ -323,14 +248,12 @@ export default function UsersPage() {
                 </select>
               )}
             </div>
-
             {error && (
               <p className="col-span-2 text-red-500 text-sm">{error}</p>
             )}
             {success && (
               <p className="col-span-2 text-green-600 text-sm">{success}</p>
             )}
-
             <div className="col-span-2 flex gap-3">
               <button
                 type="submit"
@@ -351,7 +274,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modal confirmação de exclusão */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">
@@ -379,7 +301,6 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Lista de usuários */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left">

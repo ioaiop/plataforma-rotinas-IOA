@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase";
+import {
+  loadManualData,
+  saveCategory,
+  removeCategory,
+  saveArticle,
+  removeArticle,
+} from "@/lib/services/manualService";
+import { getUser, getProfile } from "@/lib/auth";
+
+const ICONS = ["📋", "🏥", "🎓", "📞", "🔧", "📝", "⚠️", "✅", "🏢", "💊"];
 
 export default function ManualPage() {
-  const supabase = createClient();
   const [profile, setProfile] = useState(null);
   const [categories, setCategories] = useState([]);
   const [articles, setArticles] = useState([]);
@@ -14,8 +22,6 @@ export default function ManualPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  // Formulários
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -27,39 +33,22 @@ export default function ManualPage() {
     category_id: "",
   });
 
-  const ICONS = ["📋", "🏥", "🎓", "📞", "🔧", "📝", "⚠️", "✅", "🏢", "💊"];
-
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+    const user = await getUser();
+    if (!user) return;
+    const profileData = await getProfile(user.id);
     setProfile(profileData);
     setIsAdmin(
       profileData?.role === "admin" || profileData?.role === "supervisor",
     );
-
-    const { data: cats } = await supabase
-      .from("manual_categories")
-      .select("*")
-      .order("created_at", { ascending: true });
-    setCategories(cats || []);
-
-    const { data: arts } = await supabase
-      .from("manual_articles")
-      .select("*")
-      .order("created_at", { ascending: true });
-    setArticles(arts || []);
-
-    if (cats && cats.length > 0) setSelectedCategory(cats[0]);
+    const { categories: cats, articles: arts } = await loadManualData();
+    setCategories(cats);
+    setArticles(arts);
+    if (cats.length > 0) setSelectedCategory(cats[0]);
   }
 
   async function handleSaveCategory(e) {
@@ -67,33 +56,13 @@ export default function ManualPage() {
     setLoading(true);
     setError("");
     setSuccess("");
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (editingCategory) {
-      const { error } = await supabase
-        .from("manual_categories")
-        .update({ name: categoryForm.name, icon: categoryForm.icon })
-        .eq("id", editingCategory.id);
-      if (error) {
-        setError("Erro ao atualizar categoria.");
-      } else {
-        setSuccess("Categoria atualizada!");
-      }
-    } else {
-      const { error } = await supabase.from("manual_categories").insert({
-        name: categoryForm.name,
-        icon: categoryForm.icon,
-        created_by: user.id,
-      });
-      if (error) {
-        setError("Erro ao criar categoria.");
-      } else {
-        setSuccess("Categoria criada!");
-      }
+    const { error } = await saveCategory(categoryForm, editingCategory);
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
-
+    setSuccess(editingCategory ? "Categoria atualizada!" : "Categoria criada!");
     setShowCategoryForm(false);
     setEditingCategory(null);
     setCategoryForm({ name: "", icon: "📋" });
@@ -103,7 +72,7 @@ export default function ManualPage() {
 
   async function handleDeleteCategory(id) {
     if (!confirm("Excluir categoria e todos os artigos dela?")) return;
-    await supabase.from("manual_categories").delete().eq("id", id);
+    await removeCategory(id);
     setSelectedCategory(null);
     loadData();
   }
@@ -113,39 +82,17 @@ export default function ManualPage() {
     setLoading(true);
     setError("");
     setSuccess("");
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (editingArticle) {
-      const { error } = await supabase
-        .from("manual_articles")
-        .update({
-          title: articleForm.title,
-          content: articleForm.content,
-          category_id: articleForm.category_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editingArticle.id);
-      if (error) {
-        setError("Erro ao atualizar artigo.");
-      } else {
-        setSuccess("Artigo atualizado!");
-      }
-    } else {
-      const { error } = await supabase.from("manual_articles").insert({
-        title: articleForm.title,
-        content: articleForm.content,
-        category_id: articleForm.category_id || selectedCategory?.id,
-        created_by: user.id,
-      });
-      if (error) {
-        setError("Erro ao criar artigo.");
-      } else {
-        setSuccess("Artigo criado!");
-      }
+    const { error } = await saveArticle(
+      articleForm,
+      editingArticle,
+      selectedCategory?.id,
+    );
+    if (error) {
+      setError(error);
+      setLoading(false);
+      return;
     }
-
+    setSuccess(editingArticle ? "Artigo atualizado!" : "Artigo criado!");
     setShowArticleForm(false);
     setEditingArticle(null);
     setArticleForm({ title: "", content: "", category_id: "" });
@@ -155,7 +102,7 @@ export default function ManualPage() {
 
   async function handleDeleteArticle(id) {
     if (!confirm("Excluir este artigo?")) return;
-    await supabase.from("manual_articles").delete().eq("id", id);
+    await removeArticle(id);
     setSelectedArticle(null);
     loadData();
   }
@@ -166,7 +113,6 @@ export default function ManualPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-800">
@@ -217,7 +163,6 @@ export default function ManualPage() {
         </div>
       )}
 
-      {/* Modal Categoria */}
       {showCategoryForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
@@ -277,7 +222,6 @@ export default function ManualPage() {
         </div>
       )}
 
-      {/* Modal Artigo */}
       {showArticleForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
@@ -356,7 +300,6 @@ export default function ManualPage() {
         </div>
       )}
 
-      {/* Conteúdo principal */}
       {categories.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
           <p className="text-4xl mb-3">📋</p>
@@ -371,9 +314,8 @@ export default function ManualPage() {
         </div>
       ) : (
         <div className="flex gap-6">
-          {/* Sidebar de categorias */}
           <div className="w-40 lg:w-56 flex-shrink-0">
-            <div className="bg-white rounded-2x1 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {categories.map((cat) => (
                 <div key={cat.id}>
                   <button
@@ -411,7 +353,6 @@ export default function ManualPage() {
             </div>
           </div>
 
-          {/* Lista de artigos */}
           <div className="flex-1">
             {selectedArticle ? (
               <div className="bg-white rounded-2xl shadow-sm p-6">
