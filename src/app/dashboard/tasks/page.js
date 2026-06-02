@@ -1,5 +1,9 @@
 "use client";
 import { useSearchParams } from "next/navigation";
+import {
+  subscribeToComments,
+  unsubscribeFromComments,
+} from "@/lib/db/realtime";
 import { useState, useEffect, Suspense } from "react";
 import { getUser, getProfile } from "@/lib/auth";
 import { getTasksByDate } from "@/lib/db/tasks";
@@ -17,6 +21,7 @@ import {
 } from "@/lib/services/taskService";
 
 function TasksContent() {
+  const [realtimeChannel, setRealtimeChannel] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState(null);
@@ -90,6 +95,12 @@ function TasksContent() {
   }
 
   async function openTask(task) {
+    // Cancela subscription anterior se existir
+    if (realtimeChannel) {
+      unsubscribeFromComments(realtimeChannel);
+      setRealtimeChannel(null);
+    }
+
     setSelectedTask(task);
     setJustification(task.justification || "");
     setShowJustification(false);
@@ -101,7 +112,25 @@ function TasksContent() {
     ]);
     setComments(c);
     setAttachments(a);
+
+    // Inicia subscription em tempo real
+    const channel = subscribeToComments(task.id, (newComment) => {
+      setComments((prev) => {
+        const exists = prev.some((c) => c.id === newComment.id);
+        if (exists) return prev;
+        return [...prev, newComment];
+      });
+    });
+    setRealtimeChannel(channel);
   }
+
+  useEffect(() => {
+    return () => {
+      if (realtimeChannel) {
+        unsubscribeFromComments(realtimeChannel);
+      }
+    };
+  }, [realtimeChannel]);
 
   async function handleCheckIn() {
     if (!selectedTask) return;
