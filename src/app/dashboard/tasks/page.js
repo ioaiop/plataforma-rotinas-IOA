@@ -4,7 +4,7 @@ import {
   subscribeToComments,
   unsubscribeFromComments,
 } from "@/lib/db/realtime";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { getUser, getProfile } from "@/lib/auth";
 import { getTasksByDate } from "@/lib/db/tasks";
 import { getComments } from "@/lib/db/comments";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/services/taskService";
 
 function TasksContent() {
+  const commentsEndRef = useRef(null);
   const [realtimeChannel, setRealtimeChannel] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
   const searchParams = useSearchParams();
@@ -75,6 +76,10 @@ function TasksContent() {
     const status = searchParams.get("status");
     if (status && status !== "all") setStatusFilter(status);
   }, [searchParams]);
+
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [comments]);
 
   async function loadData() {
     const user = await getUser();
@@ -533,6 +538,7 @@ function TasksContent() {
                   Nenhum comentário ainda.
                 </p>
               )}
+              <div ref={commentsEndRef} />
             </div>
             <div className="flex gap-2">
               <input
