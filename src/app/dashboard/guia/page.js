@@ -60,6 +60,17 @@ const guia = {
           "Clique em um artigo para ler as orientações completas.",
         ],
       },
+
+      {
+        title: "📄 POPs",
+        content: [
+          'Acesse "POPs" no menu lateral para consultar seus Procedimentos Operacionais Padrão.',
+          "Os POPs descrevem passo a passo como você deve executar cada atividade do seu cargo.",
+          "Selecione uma categoria para ver os procedimentos disponíveis.",
+          "Clique em um artigo para ler o conteúdo completo.",
+          "Os POPs são cadastrados pelo supervisor ou administrador e são específicos para você.",
+        ],
+      },
     ],
   },
   supervisor: {
@@ -114,6 +125,17 @@ const guia = {
           'Clique em "+ Categoria" para adicionar uma nova categoria com nome e ícone.',
           'Selecione uma categoria e clique em "+ Artigo" para adicionar uma orientação.',
           "Os artigos ficam visíveis para todos os funcionários.",
+        ],
+      },
+
+      {
+        title: "📄 POPs",
+        content: [
+          'Acesse "POPs" no menu para gerenciar os Procedimentos Operacionais Padrão dos funcionários.',
+          "Selecione um funcionário para visualizar ou editar os POPs dele.",
+          'Clique em "+ Categoria" para criar uma nova categoria de procedimentos.',
+          'Dentro de cada categoria, clique em "+ Artigo" para adicionar um procedimento.',
+          "Edite ou exclua categorias e artigos clicando nos botões correspondentes.",
         ],
       },
       {
@@ -182,6 +204,17 @@ const guia = {
           "Crie categorias com nome e ícone personalizado.",
           "Adicione artigos com título e conteúdo detalhado em cada categoria.",
           "Edite ou exclua qualquer categoria ou artigo a qualquer momento.",
+        ],
+      },
+
+      {
+        title: "📄 POPs",
+        content: [
+          'Acesse "POPs" no menu para gerenciar os Procedimentos Operacionais Padrão de todos os funcionários.',
+          "Selecione o funcionário desejado para visualizar ou editar os POPs dele.",
+          "Crie categorias e artigos para organizar os procedimentos de cada cargo.",
+          "Os funcionários visualizam apenas os próprios POPs.",
+          "Supervisores também podem criar e editar POPs dos funcionários do seu setor.",
         ],
       },
       {

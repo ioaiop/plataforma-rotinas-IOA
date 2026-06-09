@@ -17,6 +17,7 @@ export default function DashboardLayout({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const notifRef = useRef(null);
 
   useEffect(() => {
@@ -81,21 +82,42 @@ export default function DashboardLayout({ children }) {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const isAdmin = profile?.role === "admin" || profile?.role === "supervisor";
+  const w = sidebarCollapsed ? "lg:w-16" : "lg:w-64";
 
-  const navLinks = [
-    { href: "/dashboard", label: "Início", icon: "🏠" },
-    { href: "/dashboard/tasks", label: "Tarefas", icon: "✅" },
-    ...(isAdmin
-      ? [
-          { href: "/dashboard/manage", label: "Gerenciar", icon: "⚙️" },
-          { href: "/dashboard/users", label: "Usuários", icon: "👥" },
-          { href: "/dashboard/history", label: "Histórico", icon: "📋" },
-        ]
-      : [{ href: "/dashboard/history", label: "Histórico", icon: "📋" }]),
-    { href: "/dashboard/manual", label: "Manual", icon: "📖" },
-    { href: "/dashboard/instalar", label: "Instalar App", icon: "📲" },
-    { href: "/dashboard/profile", label: "Meu Perfil", icon: "👤" },
-    { href: "/dashboard/guia", label: "Guia de Uso", icon: "📖" },
+  const navGroups = [
+    {
+      label: "Principal",
+      links: [
+        { href: "/dashboard", label: "Início", icon: "🏠" },
+        { href: "/dashboard/tasks", label: "Tarefas", icon: "✅" },
+        { href: "/dashboard/stats", label: "Estatísticas", icon: "📊" },
+      ],
+    },
+    {
+      label: "Gestão",
+      adminOnly: true,
+      links: [
+        { href: "/dashboard/manage", label: "Gerenciar", icon: "⚙️" },
+        { href: "/dashboard/users", label: "Usuários", icon: "👥" },
+        { href: "/dashboard/history", label: "Histórico", icon: "📋" },
+        { href: "/dashboard/estoque", label: "Estoque", icon: "📦" },
+      ],
+    },
+    {
+      label: "Conteúdo",
+      links: [
+        { href: "/dashboard/manual", label: "Manual", icon: "📖" },
+        { href: "/dashboard/pop", label: "POPs", icon: "📄" },
+      ],
+    },
+    {
+      label: "Geral",
+      links: [
+        { href: "/dashboard/guia", label: "Guia de Uso", icon: "🎓" },
+        { href: "/dashboard/instalar", label: "Instalar App", icon: "📲" },
+        { href: "/dashboard/profile", label: "Meu Perfil", icon: "👤" },
+      ],
+    },
   ];
 
   const notifIcon = (type) => {
@@ -118,29 +140,46 @@ export default function DashboardLayout({ children }) {
 
       <aside
         className={`
-        fixed h-full z-30 w-64 bg-blue-950 text-white flex flex-col transition-transform duration-300
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0
-      `}
+    fixed h-full z-30 bg-blue-950 text-white flex flex-col transition-all duration-300 overflow-y-auto pt-2
+    w-64 ${w}
+    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+    lg:translate-x-0
+  `}
       >
-        <div className="p-6 border-b border-blue-800">
-          <div className="flex items-center gap-3">
+        {/* Header */}
+        <div className="border-b border-blue-800 flex-shrink-0">
+          {/* Botão minimizar */}
+          <div className="flex justify-end px-3 pt-3">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="hidden lg:flex w-6 h-6 rounded-full bg-blue-800 hover:bg-blue-700 items-center justify-center transition"
+            >
+              <span className="text-xs">{sidebarCollapsed ? "→" : "←"}</span>
+            </button>
+          </div>
+          {/* Logo */}
+          <div
+            className={`px-4 pb-4 ${sidebarCollapsed ? "flex justify-center" : "flex items-center gap-3"}`}
+          >
             <img
               src="/logo.png"
               alt="logo"
-              className="w-10 h-10 rounded-xl object-cover"
+              className="w-8 h-8 rounded-xl object-cover flex-shrink-0"
             />
-            <div>
-              <p className="font-bold text-sm">Plataforma</p>
-              <p className="text-blue-300 text-xs">de Rotinas</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div>
+                <p className="font-bold text-sm">Plataforma</p>
+                <p className="text-blue-300 text-xs">de Rotinas</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {profile && (
-          <div className="p-4 border-b border-blue-800">
+        {/* Profile */}
+        {profile && !sidebarCollapsed && (
+          <div className="p-4 border-b border-blue-800 flex-shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-700 flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-blue-700 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -148,7 +187,7 @@ export default function DashboardLayout({ children }) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-white font-bold">
+                  <span className="text-white font-bold text-sm">
                     {profile.full_name?.charAt(0)}
                   </span>
                 )}
@@ -165,35 +204,88 @@ export default function DashboardLayout({ children }) {
           </div>
         )}
 
-        <nav className="flex-1 p-4 space-y-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition ${
-                pathname === link.href
-                  ? "bg-blue-700 text-white font-semibold"
-                  : "text-blue-200 hover:bg-blue-800"
-              }`}
-            >
-              <span>{link.icon}</span>
-              <span>{link.label}</span>
-            </Link>
-          ))}
+        {profile && sidebarCollapsed && (
+          <div className="p-3 border-b border-blue-800 flex justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-blue-700 flex items-center justify-center overflow-hidden">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-white font-bold text-xs">
+                  {profile.full_name?.charAt(0)}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-4">
+          {navGroups.map((group) => {
+            if (group.adminOnly && !isAdmin) return null;
+            return (
+              <div key={group.label}>
+                {!sidebarCollapsed && (
+                  <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider px-2 mb-1">
+                    {group.label}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {group.links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      title={sidebarCollapsed ? link.label : undefined}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
+                        pathname === link.href
+                          ? "bg-blue-700 text-white font-semibold"
+                          : "text-blue-200 hover:bg-blue-800"
+                      } ${sidebarCollapsed ? "justify-center" : ""}`}
+                    >
+                      <span className="text-base flex-shrink-0">
+                        {link.icon}
+                      </span>
+                      {!sidebarCollapsed && <span>{link.label}</span>}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-blue-800">
+        {/* Footer */}
+        <div className="p-3 border-t border-blue-800 flex-shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-blue-200 hover:bg-blue-800 transition"
+            title={sidebarCollapsed ? "Sair" : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-blue-200 hover:bg-blue-800 transition ${sidebarCollapsed ? "justify-center" : ""}`}
           >
-            <span>🚪</span>
-            <span>Sair</span>
+            <span className="text-base">🚪</span>
+            {!sidebarCollapsed && <span>Sair</span>}
           </button>
+          {!sidebarCollapsed && (
+            <div className="mt-3 text-center">
+              <p className="text-blue-400 text-xs">Desenvolvido por</p>
+              <a
+                href="https://www.instagram.com/ivelcod"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 hover:text-white text-xs font-semibold transition"
+              >
+                Ivel Cod
+              </a>
+            </div>
+          )}
         </div>
       </aside>
 
-      <main className="flex-1 lg:ml-64 min-w-0">
+      <main
+        className={`flex-1 min-w-0 transition-all duration-300 ${sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"}`}
+      >
         <div className="flex items-center justify-between p-4 lg:p-6 lg:pb-0">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -201,9 +293,7 @@ export default function DashboardLayout({ children }) {
           >
             <span className="text-xl">☰</span>
           </button>
-
           <div className="flex-1" />
-
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
@@ -216,7 +306,6 @@ export default function DashboardLayout({ children }) {
                 </span>
               )}
             </button>
-
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -270,7 +359,6 @@ export default function DashboardLayout({ children }) {
             )}
           </div>
         </div>
-
         <div className="p-4 lg:p-8">{children}</div>
       </main>
     </div>
