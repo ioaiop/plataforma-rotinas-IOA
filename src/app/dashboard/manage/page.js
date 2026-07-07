@@ -11,6 +11,8 @@ import {
 const ITEMS_PER_PAGE = 8;
 
 export default function ManagePage() {
+  const [calendarMode, setCalendarMode] = useState("single");
+  const [selectedDates, setSelectedDates] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -56,6 +58,8 @@ export default function ManagePage() {
 
   function openNew() {
     setEditingTask(null);
+    setCalendarMode("single");
+    setSelectedDates([]);
     setForm({
       title: "",
       description: "",
@@ -72,6 +76,8 @@ export default function ManagePage() {
 
   function openEdit(task) {
     setEditingTask(task);
+    setCalendarMode("single");
+    setSelectedDates([]);
     setForm({
       title: task.title,
       description: task.description || "",
@@ -100,6 +106,37 @@ export default function ManagePage() {
     setLoading(true);
     setError("");
     setSuccess("");
+
+    if (calendarMode === "multiple" && !editingTask) {
+      if (selectedDates.length === 0) {
+        setError("Selecione pelo menos um dia.");
+        setLoading(false);
+        return;
+      }
+      let hasError = false;
+      for (const date of selectedDates.sort()) {
+        const { error } = await saveTask(
+          { ...form, date_start: date, date_end: date },
+          null,
+          currentProfile,
+        );
+        if (error) {
+          hasError = true;
+          break;
+        }
+      }
+      if (hasError) {
+        setError("Erro ao criar tarefas.");
+        setLoading(false);
+        return;
+      }
+      setSuccess(`${selectedDates.length} tarefa(s) criada(s) com sucesso!`);
+      loadData();
+      setShowForm(false);
+      setLoading(false);
+      return;
+    }
+
     const { error } = await saveTask(form, editingTask, currentProfile);
     if (error) {
       setError(error);
@@ -158,12 +195,22 @@ export default function ManagePage() {
   }
 
   function handleCalendarClick(dateStr) {
-    if (!form.date_start || (form.date_start && form.date_end)) {
-      setForm((prev) => ({ ...prev, date_start: dateStr, date_end: "" }));
-    } else {
-      if (dateStr < form.date_start)
+    if (calendarMode === "single") {
+      setForm((prev) => ({ ...prev, date_start: dateStr, date_end: dateStr }));
+    } else if (calendarMode === "period") {
+      if (!form.date_start || (form.date_start && form.date_end)) {
         setForm((prev) => ({ ...prev, date_start: dateStr, date_end: "" }));
-      else setForm((prev) => ({ ...prev, date_end: dateStr }));
+      } else {
+        if (dateStr < form.date_start)
+          setForm((prev) => ({ ...prev, date_start: dateStr, date_end: "" }));
+        else setForm((prev) => ({ ...prev, date_end: dateStr }));
+      }
+    } else if (calendarMode === "multiple") {
+      setSelectedDates((prev) =>
+        prev.includes(dateStr)
+          ? prev.filter((d) => d !== dateStr)
+          : [...prev, dateStr],
+      );
     }
   }
 
@@ -317,6 +364,37 @@ export default function ManagePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Data(s) da tarefa
               </label>
+
+              {/* Seletor de modo */}
+              <div className="flex gap-1 mb-3">
+                {[
+                  { value: "single", label: "📅 Dia único" },
+                  { value: "period", label: "📆 Período" },
+                  { value: "multiple", label: "🗓️ Dias avulsos" },
+                ].map((mode) => (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => {
+                      setCalendarMode(mode.value);
+                      setSelectedDates([]);
+                      setForm((prev) => ({
+                        ...prev,
+                        date_start: "",
+                        date_end: "",
+                      }));
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                      calendarMode === mode.value
+                        ? "bg-blue-700 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-gray-50 overflow-x-auto">
                 <div className="min-w-[300px] sm:min-w-full">
                   <div className="flex items-center justify-between mb-3">
@@ -357,6 +435,7 @@ export default function ManagePage() {
                       →
                     </button>
                   </div>
+
                   <div className="grid grid-cols-7 mb-1">
                     {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map(
                       (d) => (
@@ -369,35 +448,68 @@ export default function ManagePage() {
                       ),
                     )}
                   </div>
+
                   <div className="grid grid-cols-7 gap-1">
                     {getCalendarDays(calendarDate).map((day, idx) => {
                       if (!day) return <div key={idx} />;
                       const dateStr = formatDate(day);
-                      const isStart = form.date_start === dateStr;
-                      const isEnd = form.date_end === dateStr;
+                      const isToday = dateStr === formatDate(new Date());
+
+                      // Modo dias avulsos
+                      const isSelected =
+                        calendarMode === "multiple" &&
+                        selectedDates.includes(dateStr);
+
+                      // Modo dia único e período
+                      const isStart =
+                        calendarMode !== "multiple" &&
+                        form.date_start === dateStr;
+                      const isEnd =
+                        calendarMode !== "multiple" &&
+                        form.date_end === dateStr &&
+                        form.date_end !== form.date_start;
                       const isInRange =
+                        calendarMode === "period" &&
                         form.date_start &&
                         form.date_end &&
                         dateStr > form.date_start &&
                         dateStr < form.date_end;
-                      const isToday = dateStr === formatDate(new Date());
+
                       return (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => handleCalendarClick(dateStr)}
                           className={`text-center text-[11px] sm:text-sm py-1 sm:py-1.5 rounded-md sm:rounded-lg transition font-medium
-                            ${isStart || isEnd ? "bg-blue-700 text-white" : ""}
-                            ${isInRange ? "bg-blue-100 text-blue-700" : ""}
-                            ${!isStart && !isEnd && !isInRange ? "hover:bg-gray-200 text-gray-700" : ""}
-                            ${isToday && !isStart && !isEnd ? "ring-1 sm:ring-2 ring-blue-400" : ""}`}
+                ${isSelected ? "bg-green-600 text-white" : ""}
+                ${isStart || isEnd ? "bg-blue-700 text-white" : ""}
+                ${isInRange ? "bg-blue-100 text-blue-700" : ""}
+                ${!isSelected && !isStart && !isEnd && !isInRange ? "hover:bg-gray-200 text-gray-700" : ""}
+                ${isToday && !isSelected && !isStart && !isEnd ? "ring-1 sm:ring-2 ring-blue-400" : ""}`}
                         >
                           {day.getDate()}
                         </button>
                       );
                     })}
                   </div>
-                  {form.date_start && (
+
+                  {/* Resumo */}
+                  {calendarMode === "multiple" && selectedDates.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 text-[11px] sm:text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span>
+                        🗓️ {selectedDates.length} dia(s) selecionado(s)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDates([])}
+                        className="text-red-400 hover:text-red-600 transition text-xs"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  )}
+
+                  {calendarMode !== "multiple" && form.date_start && (
                     <div className="mt-3 pt-3 border-t border-gray-200 text-[11px] sm:text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <span>
                         {form.date_end && form.date_end !== form.date_start
