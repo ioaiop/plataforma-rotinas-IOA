@@ -32,3 +32,21 @@ export async function updateSector(sectorId, name) {
     .eq("id", sectorId);
   return { error };
 }
+
+export async function getSectorUsers(sectorId) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("sector_id", sectorId);
+  return data || [];
+}
+
+export async function getSectorTasks(sectorId) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("tasks")
+    .select("id, title")
+    .eq("sector_id", sectorId);
+  return data || [];
+}

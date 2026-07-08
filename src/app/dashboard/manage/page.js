@@ -8,6 +8,7 @@ import {
   removeTask,
   addSector,
   removeSector,
+  checkAndRemoveSector,
 } from "@/lib/services/manageService";
 
 const ITEMS_PER_PAGE = 8;
@@ -186,10 +187,18 @@ export default function ManagePage() {
 
   async function handleDeleteSector(sectorId) {
     setLoading(true);
-    const { error } = await removeSector(sectorId);
-    if (!error) {
+    const result = await checkAndRemoveSector(sectorId);
+    if (result?.error) {
+      setSectorError(result.error);
       setShowDeleteSectorConfirm(null);
-      loadData();
+    } else {
+      setShowDeleteSectorConfirm(null);
+      setShowSectorForm(false);
+      setSectorSuccess("");
+      await loadData();
+      setShowSectorForm(true);
+      setSectorSuccess("Setor excluído com sucesso!");
+      setTimeout(() => setSectorSuccess(""), 3000);
     }
     setLoading(false);
   }
