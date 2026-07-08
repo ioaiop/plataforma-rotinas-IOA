@@ -14,6 +14,7 @@ import {
 const ITEMS_PER_PAGE = 8;
 
 export default function ManagePage() {
+  const [filterUser, setFilterUser] = useState("");
   const [sectorError, setSectorError] = useState("");
   const [sectorSuccess, setSectorSuccess] = useState("");
   const [showDeleteSectorConfirm, setShowDeleteSectorConfirm] = useState(null);
@@ -245,6 +246,12 @@ export default function ManagePage() {
 
   const filteredTasks = tasks.filter((task) => {
     if (filterSector && task.sector_id !== filterSector) return false;
+    if (
+      filterUser &&
+      !task.assigned_users?.includes(filterUser) &&
+      task.assigned_to !== filterUser
+    )
+      return false;
     return true;
   });
 
@@ -279,7 +286,6 @@ export default function ManagePage() {
           </button>
         </div>
       </div>
-
       {showSectorForm && (
         <form
           onSubmit={handleAddSector}
@@ -351,7 +357,6 @@ export default function ManagePage() {
           )}
         </form>
       )}
-
       {showForm && (
         <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 mb-6">
           <h2 className="font-semibold text-gray-700 mb-4">
@@ -626,8 +631,7 @@ export default function ManagePage() {
           </form>
         </div>
       )}
-
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap">
         <select
           value={filterSector}
           onChange={(e) => setFilterSector(e.target.value)}
@@ -640,8 +644,20 @@ export default function ManagePage() {
             </option>
           ))}
         </select>
-      </div>
 
+        <select
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Todos os responsáveis</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.full_name}
+            </option>
+          ))}
+        </select>
+      </div>
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">
@@ -667,7 +683,6 @@ export default function ManagePage() {
           </div>
         </div>
       )}
-
       {showDeleteSectorConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">
@@ -694,7 +709,6 @@ export default function ManagePage() {
           </div>
         </div>
       )}
-
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-50 text-gray-500 text-left">
@@ -766,7 +780,6 @@ export default function ManagePage() {
           </tbody>
         </table>
       </div>
-
       {totalCount > ITEMS_PER_PAGE && (
         <div className="flex items-center justify-between mt-4">
           <p className="text-sm text-gray-500">
@@ -775,7 +788,7 @@ export default function ManagePage() {
             {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} de {totalCount}{" "}
             tarefas
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
@@ -783,18 +796,45 @@ export default function ManagePage() {
             >
               ← Anterior
             </button>
-            {Array.from(
-              { length: Math.ceil(totalCount / ITEMS_PER_PAGE) },
-              (_, i) => i + 1,
-            ).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition ${currentPage === page ? "bg-blue-700 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`}
-              >
-                {page}
-              </button>
-            ))}
+
+            {(() => {
+              const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+              const pages = [];
+              const delta = 2;
+
+              const left = Math.max(2, currentPage - delta);
+              const right = Math.min(totalPages - 1, currentPage + delta);
+
+              pages.push(1);
+
+              if (left > 2) pages.push("...");
+
+              for (let i = left; i <= right; i++) pages.push(i);
+
+              if (right < totalPages - 1) pages.push("...");
+
+              if (totalPages > 1) pages.push(totalPages);
+
+              return pages.map((page, idx) =>
+                page === "..." ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="px-2 text-gray-400 text-sm"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition ${currentPage === page ? "bg-blue-700 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-700"}`}
+                  >
+                    {page}
+                  </button>
+                ),
+              );
+            })()}
+
             <button
               onClick={() =>
                 setCurrentPage((p) =>
@@ -808,7 +848,7 @@ export default function ManagePage() {
             </button>
           </div>
         </div>
-      )}
+      )}{" "}
     </div>
   );
 }
