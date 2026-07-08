@@ -1,16 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
+
 import {
   loadManageData,
   saveTask,
   removeTask,
   addSector,
+  removeSector,
 } from "@/lib/services/manageService";
 
 const ITEMS_PER_PAGE = 8;
 
 export default function ManagePage() {
+  const [sectorError, setSectorError] = useState("");
+  const [sectorSuccess, setSectorSuccess] = useState("");
+  const [showDeleteSectorConfirm, setShowDeleteSectorConfirm] = useState(null);
   const [calendarMode, setCalendarMode] = useState("single");
   const [selectedDates, setSelectedDates] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -166,12 +171,27 @@ export default function ManagePage() {
   async function handleAddSector(e) {
     e.preventDefault();
     if (!newSector.trim()) return;
+    setSectorError("");
+    setSectorSuccess("");
     const { error } = await addSector(newSector.trim(), currentProfile.unit_id);
-    if (!error) {
+    if (error) {
+      setSectorError("Erro ao criar setor.");
+    } else {
+      setSectorSuccess("Setor criado com sucesso!");
       setNewSector("");
-      setShowSectorForm(false);
+      loadData();
+      setTimeout(() => setSectorSuccess(""), 3000);
+    }
+  }
+
+  async function handleDeleteSector(sectorId) {
+    setLoading(true);
+    const { error } = await removeSector(sectorId);
+    if (!error) {
+      setShowDeleteSectorConfirm(null);
       loadData();
     }
+    setLoading(false);
   }
 
   function formatDate(date) {
@@ -254,34 +274,72 @@ export default function ManagePage() {
       {showSectorForm && (
         <form
           onSubmit={handleAddSector}
-          className="bg-white rounded-2xl shadow-sm p-4 mb-4 flex gap-3 items-end"
+          className="bg-white rounded-2xl shadow-sm p-4 mb-4"
         >
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nome do setor
-            </label>
-            <input
-              type="text"
-              value={newSector}
-              onChange={(e) => setNewSector(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ex: Administrativo, Limpeza..."
-              required
-            />
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome do setor
+              </label>
+              <input
+                type="text"
+                value={newSector}
+                onChange={(e) => setNewSector(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: Administrativo, Limpeza..."
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition"
+            >
+              Salvar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSectorForm(false);
+                setSectorError("");
+                setSectorSuccess("");
+              }}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-lg text-sm transition"
+            >
+              Cancelar
+            </button>
           </div>
-          <button
-            type="submit"
-            className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition"
-          >
-            Salvar
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowSectorForm(false)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-lg text-sm transition"
-          >
-            Cancelar
-          </button>
+          {sectorError && (
+            <p className="text-red-500 text-sm mt-2">{sectorError}</p>
+          )}
+          {sectorSuccess && (
+            <p className="text-green-600 text-sm mt-2">{sectorSuccess}</p>
+          )}
+
+          {/* Lista de setores com opção de excluir */}
+          {sectors.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-500 mb-2">
+                Setores cadastrados:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {sectors.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-1 bg-gray-100 rounded-lg px-3 py-1.5"
+                  >
+                    <span className="text-sm text-gray-700">{s.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteSectorConfirm(s.id)}
+                      className="text-red-400 hover:text-red-600 transition ml-1 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </form>
       )}
 
@@ -592,6 +650,33 @@ export default function ManagePage() {
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(null)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg text-sm transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteSectorConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">
+            <h3 className="font-bold text-gray-800 mb-2">Excluir setor</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              Tem certeza? As tarefas vinculadas a este setor perderão o
+              vínculo.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDeleteSector(showDeleteSectorConfirm)}
+                disabled={loading}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition disabled:opacity-50"
+              >
+                {loading ? "Excluindo..." : "Excluir"}
+              </button>
+              <button
+                onClick={() => setShowDeleteSectorConfirm(null)}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg text-sm transition"
               >
                 Cancelar

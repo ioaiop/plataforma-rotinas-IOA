@@ -9,6 +9,7 @@ import { createSector, getSectors } from "@/lib/db/sectors";
 import { getProfiles } from "@/lib/db/profiles";
 import { addHistory } from "@/lib/db/history";
 import { addNotification } from "@/lib/db/notifications";
+import { deleteSector } from "@/lib/db/sectors";
 
 export async function loadManageData(currentPage, itemsPerPage) {
   const user = await getUser();
@@ -25,6 +26,11 @@ export async function loadManageData(currentPage, itemsPerPage) {
   const users = await getProfiles(profile.unit_id, "admin", null);
   const sectors = await getSectors(profile.unit_id);
   return { profile, tasks, count, users, sectors };
+}
+
+export async function removeSector(sectorId) {
+  const { error } = await deleteSector(sectorId);
+  return { error };
 }
 
 export async function saveTask(form, editingTask, currentProfile) {
@@ -95,5 +101,5 @@ export async function removeTask(taskId) {
 
 export async function addSector(name, unitId) {
   const { error } = await createSector(name, unitId);
-  if (error) throw new Error("Erro ao criar setor.");
+  return { error };
 }
