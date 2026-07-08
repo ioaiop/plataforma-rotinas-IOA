@@ -54,7 +54,12 @@ export default function ManagePage() {
   }, [currentPage]);
 
   async function loadData() {
-    const result = await loadManageData(currentPage, ITEMS_PER_PAGE);
+    const result = await loadManageData(
+      currentPage,
+      ITEMS_PER_PAGE,
+      filterSector || null,
+      filterUser || null,
+    );
     if (!result) return;
     setCurrentProfile(result.profile);
     setTasks(result.tasks);
@@ -62,6 +67,11 @@ export default function ManagePage() {
     setUsers(result.users);
     setSectors(result.sectors);
   }
+
+  useEffect(() => {
+    setCurrentPage(1);
+    loadData();
+  }, [filterSector, filterUser]);
 
   function openNew() {
     setEditingTask(null);
@@ -722,7 +732,7 @@ export default function ManagePage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredTasks.map((task) => (
+            {tasks.map((task) => (
               <tr key={task.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <p className="font-medium text-gray-800">{task.title}</p>
@@ -743,7 +753,33 @@ export default function ManagePage() {
                   {task.sectors?.name || "—"}
                 </td>
                 <td className="px-6 py-4 text-gray-600">
-                  {task.profiles?.full_name || "—"}
+                  {task.assigned_users?.length > 0 ? (
+                    <div className="relative group">
+                      <span className="cursor-default">
+                        {users.find((u) => u.id === task.assigned_users[0])
+                          ?.full_name ||
+                          task.profiles?.full_name ||
+                          "—"}
+                        {task.assigned_users.length > 1 && (
+                          <span className="ml-1 bg-blue-100 text-blue-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                            +{task.assigned_users.length - 1}
+                          </span>
+                        )}
+                      </span>
+                      {task.assigned_users.length > 1 && (
+                        <div className="absolute left-0 top-6 z-50 hidden group-hover:block bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl min-w-max">
+                          {task.assigned_users.map((userId) => (
+                            <p key={userId}>
+                              {users.find((u) => u.id === userId)?.full_name ||
+                                userId}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    task.profiles?.full_name || "—"
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <span

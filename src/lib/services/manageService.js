@@ -40,8 +40,14 @@ export async function checkAndRemoveSector(sectorId) {
   return { error: error ? "Erro ao excluir setor." : null };
 }
 
-export async function loadManageData(currentPage, itemsPerPage) {
+export async function loadManageData(
+  currentPage,
+  itemsPerPage,
+  filterSectorId = null,
+  filterUserId = null,
+) {
   const user = await getUser();
+  if (!user) return null;
   const profile = await getProfile(user.id);
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
@@ -51,6 +57,8 @@ export async function loadManageData(currentPage, itemsPerPage) {
     profile.role,
     from,
     to,
+    filterSectorId,
+    filterUserId,
   );
   const users = await getProfiles(profile.unit_id, "admin", null);
   const sectors = await getSectors(profile.unit_id);

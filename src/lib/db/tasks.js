@@ -75,7 +75,15 @@ export async function getWeekTasks(weekStart, weekEnd, unitId) {
   return data || [];
 }
 
-export async function getTasksPaginated(unitId, sectorId, role, from, to) {
+export async function getTasksPaginated(
+  unitId,
+  sectorId,
+  role,
+  from,
+  to,
+  filterSectorId = null,
+  filterUserId = null,
+) {
   const supabase = createClient();
   let query = supabase
     .from("tasks")
@@ -87,6 +95,8 @@ export async function getTasksPaginated(unitId, sectorId, role, from, to) {
     .range(from, to);
 
   if (role === "supervisor") query = query.eq("sector_id", sectorId);
+  if (filterSectorId) query = query.eq("sector_id", filterSectorId);
+  if (filterUserId) query = query.contains("assigned_users", [filterUserId]);
 
   const { data, count } = await query;
   return { data: data || [], count: count || 0 };
