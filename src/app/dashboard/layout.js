@@ -1,5 +1,5 @@
 "use client";
-
+import { formatDateTimeBR } from "@/lib/utils/date";
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -345,7 +345,7 @@ export default function DashboardLayout({ children }) {
                             </p>
                           )}
                           <p className="text-xs text-gray-400 mt-1">
-                            {new Date(notif.created_at).toLocaleString("pt-BR")}
+                            {formatDateTimeBR(notif.created_at)}{" "}
                           </p>
                         </div>
                         {!notif.read && (

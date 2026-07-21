@@ -1,5 +1,5 @@
 "use client";
-
+import { formatDateTimeBR } from "@/lib/utils/date";
 import { useState, useEffect } from "react";
 import { loadHistoryData } from "@/lib/services/historyService";
 
@@ -136,7 +136,7 @@ export default function HistoryPage() {
                     <p className="text-gray-500 text-sm mt-1">{item.details}</p>
                   )}
                   <p className="text-gray-400 text-xs mt-1">
-                    {new Date(item.created_at).toLocaleString("pt-BR")}
+                    {formatDateTimeBR(item.created_at)}{" "}
                   </p>
                 </div>
               </div>

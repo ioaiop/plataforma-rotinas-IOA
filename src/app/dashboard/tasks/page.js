@@ -1,4 +1,5 @@
 "use client";
+import { formatDateTimeBR } from "@/lib/utils/date";
 import { useSearchParams } from "next/navigation";
 import {
   subscribeToComments,
@@ -528,7 +529,7 @@ function TasksContent() {
                     </p>
                     <p className="text-sm text-gray-600">{comment.content}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {new Date(comment.created_at).toLocaleString("pt-BR")}
+                      {formatDateTimeBR(comment.created_at)}{" "}
                     </p>
                   </div>
                 </div>

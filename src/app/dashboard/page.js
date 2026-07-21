@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateTimeBR } from "@/lib/utils/date";
 import { useEffect, useState } from "react";
 import {
   BarChart,
@@ -572,7 +573,7 @@ export default function DashboardPage() {
                     </p>
                   )}
                   <p className="text-xs text-gray-400">
-                    {new Date(item.created_at).toLocaleString("pt-BR")}
+                    {formatDateTimeBR(item.created_at)}{" "}
                   </p>
                 </div>
               </div>
