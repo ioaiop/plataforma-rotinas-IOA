@@ -354,6 +354,8 @@ export default function DashboardPage() {
   const percent =
     stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
+  console.log("created_at raw:", item.created_at);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">

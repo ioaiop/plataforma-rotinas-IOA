@@ -1,6 +1,9 @@
 export function formatDateTimeBR(dateStr) {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleString("pt-BR", {
+  // Força interpretação como UTC adicionando Z se não tiver timezone
+  const utcStr =
+    dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  return new Date(utcStr).toLocaleString("pt-BR", {
     timeZone: "America/Recife",
     day: "2-digit",
     month: "2-digit",
@@ -12,7 +15,9 @@ export function formatDateTimeBR(dateStr) {
 
 export function formatDateBR(dateStr) {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("pt-BR", {
+  const utcStr =
+    dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  return new Date(utcStr).toLocaleDateString("pt-BR", {
     timeZone: "America/Recife",
     day: "2-digit",
     month: "2-digit",

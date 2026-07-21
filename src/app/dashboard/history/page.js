@@ -95,52 +95,57 @@ export default function HistoryPage() {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-100">
-            {filteredHistory.map((item) => (
-              <div
-                key={item.id}
-                className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50"
-              >
-                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {item.profiles?.avatar_url ? (
-                    <img
-                      src={item.profiles.avatar_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-blue-700 font-bold text-sm">
-                      {item.profiles?.full_name?.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-800 text-sm">
-                      {item.profiles?.full_name}
-                    </span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-semibold ${actionColor(item.action)}`}
-                    >
-                      {actionIcon(item.action)} {item.action}
-                    </span>
-                    {item.tasks?.title && (
-                      <span className="text-gray-500 text-sm">
-                        em{" "}
-                        <span className="font-medium">
-                          "{item.tasks.title}"
-                        </span>
+            {filteredHistory.map((item) => {
+              console.log("created_at raw:", item.created_at);
+              return (
+                <div
+                  key={item.id}
+                  className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50"
+                >
+                  <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {item.profiles?.avatar_url ? (
+                      <img
+                        src={item.profiles.avatar_url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-blue-700 font-bold text-sm">
+                        {item.profiles?.full_name?.charAt(0)}
                       </span>
                     )}
                   </div>
-                  {item.details && (
-                    <p className="text-gray-500 text-sm mt-1">{item.details}</p>
-                  )}
-                  <p className="text-gray-400 text-xs mt-1">
-                    {formatDateTimeBR(item.created_at)}{" "}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {item.profiles?.full_name}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${actionColor(item.action)}`}
+                      >
+                        {actionIcon(item.action)} {item.action}
+                      </span>
+                      {item.tasks?.title && (
+                        <span className="text-gray-500 text-sm">
+                          em{" "}
+                          <span className="font-medium">
+                            "{item.tasks.title}"
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    {item.details && (
+                      <p className="text-gray-500 text-sm mt-1">
+                        {item.details}
+                      </p>
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      {formatDateTimeBR(item.created_at)}{" "}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {filteredHistory.length === 0 && (
               <div className="px-6 py-8 text-center text-gray-400">
                 Nenhum registro encontrado.
