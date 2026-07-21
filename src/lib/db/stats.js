@@ -1,16 +1,73 @@
 import { createClient } from "@/lib/supabase";
 
-export async function getTasksByPeriodAndUnit(dateStart, dateEnd, unitId) {
+export async function getStatsCount(
+  dateStart,
+  dateEnd,
+  unitId,
+  sectorId = null,
+) {
   const supabase = createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("tasks")
-    .select(
-      "status, date_start, date_end, sector_id, assigned_users, assigned_to",
-    )
+    .select("status", { count: "exact" })
     .lte("date_start", dateEnd)
     .gte("date_end", dateStart)
     .eq("unit_id", unitId);
-  return data || [];
+  if (sectorId) query = query.eq("sector_id", sectorId);
+  const { count } = await query;
+  return count || 0;
+}
+
+export async function getStatsByStatus(
+  dateStart,
+  dateEnd,
+  unitId,
+  sectorId = null,
+) {
+  const supabase = createClient();
+  const statuses = [
+    "completed",
+    "pending",
+    "not_completed",
+    "in_progress",
+    "waiting_approval",
+  ];
+  const results = {};
+  for (const status of statuses) {
+    let query = supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .lte("date_start", dateEnd)
+      .gte("date_end", dateStart)
+      .eq("unit_id", unitId)
+      .eq("status", status);
+    if (sectorId) query = query.eq("sector_id", sectorId);
+    const { count } = await query;
+    results[status] = count || 0;
+  }
+  return results;
+}
+
+export async function getTasksByPeriodAndUnit(dateStart, dateEnd, unitId) {
+  const supabase = createClient();
+  let from = 0;
+  let allData = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select(
+        "status, date_start, date_end, sector_id, assigned_users, assigned_to",
+      )
+      .lte("date_start", dateEnd)
+      .gte("date_end", dateStart)
+      .eq("unit_id", unitId)
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    allData = [...allData, ...data];
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  return allData;
 }
 
 export async function getTasksByPeriodAndSector(
@@ -20,16 +77,25 @@ export async function getTasksByPeriodAndSector(
   sectorId,
 ) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from("tasks")
-    .select(
-      "status, date_start, date_end, sector_id, assigned_users, assigned_to",
-    )
-    .lte("date_start", dateEnd)
-    .gte("date_end", dateStart)
-    .eq("unit_id", unitId)
-    .eq("sector_id", sectorId);
-  return data || [];
+  let from = 0;
+  let allData = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select(
+        "status, date_start, date_end, sector_id, assigned_users, assigned_to",
+      )
+      .lte("date_start", dateEnd)
+      .gte("date_end", dateStart)
+      .eq("unit_id", unitId)
+      .eq("sector_id", sectorId)
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    allData = [...allData, ...data];
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  return allData;
 }
 
 export async function getTasksByPeriodAndUser(
@@ -39,14 +105,23 @@ export async function getTasksByPeriodAndUser(
   userId,
 ) {
   const supabase = createClient();
-  const { data } = await supabase
-    .from("tasks")
-    .select("status, date_start, date_end, title, sectors(name)")
-    .lte("date_start", dateEnd)
-    .gte("date_end", dateStart)
-    .eq("unit_id", unitId)
-    .contains("assigned_users", [userId]);
-  return data || [];
+  let from = 0;
+  let allData = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("status, date_start, date_end, title, sectors(name)")
+      .lte("date_start", dateEnd)
+      .gte("date_end", dateStart)
+      .eq("unit_id", unitId)
+      .contains("assigned_users", [userId])
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    allData = [...allData, ...data];
+    if (data.length < 1000) break;
+    from += 1000;
+  }
+  return allData;
 }
 
 export async function getProfilesForStats(unitId, sectorId, role) {

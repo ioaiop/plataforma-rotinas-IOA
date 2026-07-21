@@ -38,7 +38,6 @@ export async function loadStatsData(dateStart, dateEnd, filterSectorId = null) {
   }
 
   sectors = await getSectorsForStats(profile.unit_id);
-
   const sectorId = isSupervisor ? profile.sector_id : filterSectorId;
 
   if (sectorId) {
