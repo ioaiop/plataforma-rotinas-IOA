@@ -10,9 +10,104 @@ import {
 } from "@/lib/services/manualService";
 import { getUser, getProfile } from "@/lib/auth";
 
-const ICONS = ["📋", "🏥", "🎓", "📞", "🔧", "📝", "⚠️", "✅", "🏢", "💊"];
-
+const ICONS = [
+  // Saúde e Clínica
+  "🏥",
+  "🦷",
+  "💊",
+  "🩺",
+  "🧬",
+  "💉",
+  "🩹",
+  "🧠",
+  // Administrativo e Financeiro
+  "💰",
+  "💵",
+  "📊",
+  "📈",
+  "💳",
+  "🏦",
+  "🧾",
+  "📋",
+  "📁",
+  "🗂️",
+  // Limpeza e Manutenção
+  "🧹",
+  "🧺",
+  "🧼",
+  "🧽",
+  "🔧",
+  "🔨",
+  "⚙️",
+  "🏗️",
+  // Comunicação e Marketing
+  "📣",
+  "📢",
+  "📱",
+  "💻",
+  "🖥️",
+  "📸",
+  "🎯",
+  "✉️",
+  "📨",
+  "🌐",
+  // Educação e Acadêmico
+  "🎓",
+  "📚",
+  "✏️",
+  "📝",
+  "🏫",
+  "📖",
+  "🔬",
+  "🧪",
+  "📐",
+  "🗒️",
+  // Recepção e Atendimento
+  "👥",
+  "☎️",
+  "🛎️",
+  "🪑",
+  "🚪",
+  "👋",
+  "😊",
+  "🗣️",
+  "📞",
+  "🤗",
+  // Comercial e Vendas
+  "🛒",
+  "🏪",
+  "💲",
+  "📦",
+  "🚚",
+  "🏷️",
+  "🛍️",
+  "💼",
+  "🤝",
+  "📃",
+  // Segurança e Portaria
+  "🔐",
+  "🔒",
+  "🛡️",
+  "👮",
+  "🚨",
+  "📹",
+  "🔑",
+  "🚧",
+  "⚠️",
+  // Geral
+  "⭐",
+  "✅",
+  "❗",
+  "💡",
+  "🏆",
+  "📌",
+  "🔔",
+  "📅",
+  "🗓️",
+  "🎪",
+];
 export default function ManualPage() {
+  const [search, setSearch] = useState("");
   const [profile, setProfile] = useState(null);
   const [categories, setCategories] = useState([]);
   const [articles, setArticles] = useState([]);
@@ -132,6 +227,7 @@ export default function ManualPage() {
             Consulte orientações para situações específicas
           </p>
         </div>
+
         {isAdmin && (
           <div className="flex gap-2">
             <button
@@ -159,6 +255,26 @@ export default function ManualPage() {
               + Artigo
             </button>
           </div>
+        )}
+      </div>
+
+      {/* Busca */}
+      <div className="flex items-center gap-2 bg-white rounded-2xl shadow-sm px-4 py-3 mb-6">
+        <span className="text-gray-400">🔍</span>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar no manual por título ou conteúdo..."
+          className="flex-1 text-sm text-gray-700 focus:outline-none"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="text-xs text-red-400 hover:text-red-600 transition"
+          >
+            Limpar
+          </button>
         )}
       </div>
 
@@ -198,18 +314,25 @@ export default function ManualPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ícone
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {ICONS.map((icon) => (
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-lg border border-gray-200">
+                  {ICONS.map((icon, idx) => (
                     <button
-                      key={icon}
+                      key={`${icon}-${idx}`}
                       type="button"
                       onClick={() => setCategoryForm({ ...categoryForm, icon })}
-                      className={`text-xl p-2 rounded-lg transition ${categoryForm.icon === icon ? "bg-blue-100 ring-2 ring-blue-500" : "bg-gray-100 hover:bg-gray-200"}`}
+                      className={`text-xl p-1.5 rounded-lg transition ${
+                        categoryForm.icon === icon
+                          ? "bg-blue-100 ring-2 ring-blue-500"
+                          : "hover:bg-gray-200"
+                      }`}
                     >
                       {icon}
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Selecionado: {categoryForm.icon}
+                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <button
@@ -424,27 +547,39 @@ export default function ManualPage() {
                     {selectedCategory?.name}
                   </button>
                 )}
-                {filteredArticles.length === 0 ? (
+                {filteredArticles.filter(
+                  (a) =>
+                    !search ||
+                    a.title?.toLowerCase().includes(search.toLowerCase()) ||
+                    a.content?.toLowerCase().includes(search.toLowerCase()),
+                ).length === 0 ? (
                   <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
                     <p className="text-gray-400 text-sm">
                       Nenhum artigo nesta categoria ainda.
                     </p>
                   </div>
                 ) : (
-                  filteredArticles.map((article) => (
-                    <button
-                      key={article.id}
-                      onClick={() => setSelectedArticle(article)}
-                      className="w-full bg-white rounded-2xl shadow-sm p-4 text-left hover:shadow-md transition"
-                    >
-                      <p className="font-semibold text-gray-800 text-sm">
-                        {article.title}
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1 line-clamp-2">
-                        {article.content}
-                      </p>
-                    </button>
-                  ))
+                  filteredArticles
+                    .filter(
+                      (a) =>
+                        !search ||
+                        a.title?.toLowerCase().includes(search.toLowerCase()) ||
+                        a.content?.toLowerCase().includes(search.toLowerCase()),
+                    )
+                    .map((article) => (
+                      <button
+                        key={article.id}
+                        onClick={() => setSelectedArticle(article)}
+                        className="w-full bg-white rounded-2xl shadow-sm p-4 text-left hover:shadow-md transition"
+                      >
+                        <p className="font-semibold text-gray-800 text-sm">
+                          {article.title}
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1 line-clamp-2">
+                          {article.content}
+                        </p>
+                      </button>
+                    ))
                 )}
               </div>
             )}

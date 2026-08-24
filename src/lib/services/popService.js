@@ -8,8 +8,29 @@ import {
   createPopArticle,
   updatePopArticle,
   deletePopArticle,
+  uploadPopPdf,
+  removePopPdf,
 } from "@/lib/db/pop";
 import { getProfiles } from "@/lib/db/profiles";
+
+export async function uploadArticlePdf(articleId, file) {
+  const { error, url, name } = await uploadPopPdf(articleId, file);
+  if (error) return { error: "Erro ao fazer upload do PDF." };
+  const { error: updateError } = await updatePopArticle(
+    articleId,
+    undefined,
+    undefined,
+    undefined,
+    url,
+    name,
+  );
+  return { error: updateError ? "Erro ao salvar PDF." : null, url, name };
+}
+
+export async function removeArticlePdf(articleId) {
+  const { error } = await removePopPdf(articleId);
+  return { error };
+}
 
 export async function loadPopData(targetUserId) {
   const user = await getUser();
@@ -34,22 +55,21 @@ export async function loadPopUsers(unitId, sectorId, role) {
   return users.filter((u) => u.role === "employee");
 }
 
-export async function savePopCategory(form, editingCategory, targetUserId) {
+export async function savePopCategory(form, editingCategory, targetUserIds) {
   const user = await getUser();
-  if (!user) return { error: "Usuário não autenticado." };
-
   if (editingCategory) {
     const { error } = await updatePopCategory(
       editingCategory.id,
       form.name,
       form.icon,
+      targetUserIds,
     );
     return { error: error ? "Erro ao atualizar categoria." : null };
   } else {
     const { error } = await createPopCategory(
       form.name,
       form.icon,
-      targetUserId,
+      targetUserIds,
       user.id,
     );
     return { error: error ? "Erro ao criar categoria." : null };

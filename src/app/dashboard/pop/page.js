@@ -9,11 +9,111 @@ import {
   removePopCategory,
   savePopArticle,
   removePopArticle,
+  uploadArticlePdf,
+  removeArticlePdf,
 } from "@/lib/services/popService";
 
-const ICONS = ["📋", "🏥", "🎓", "📞", "🔧", "📝", "⚠️", "✅", "🏢", "💊"];
+const ICONS = [
+  // Saúde e Clínica
+  "🏥",
+  "🦷",
+  "💊",
+  "🩺",
+  "🧬",
+  "💉",
+  "🩹",
+  "🧠",
+  // Administrativo e Financeiro
+  "💰",
+  "💵",
+  "📊",
+  "📈",
+  "💳",
+  "🏦",
+  "🧾",
+  "📋",
+  "📁",
+  "🗂️",
+  // Limpeza e Manutenção
+  "🧹",
+  "🧺",
+  "🧼",
+  "🧽",
+  "🔧",
+  "🔨",
+  "⚙️",
+  "🏗️",
+  // Comunicação e Marketing
+  "📣",
+  "📢",
+  "📱",
+  "💻",
+  "🖥️",
+  "📸",
+  "🎯",
+  "✉️",
+  "📨",
+  "🌐",
+  // Educação e Acadêmico
+  "🎓",
+  "📚",
+  "✏️",
+  "📝",
+  "🏫",
+  "📖",
+  "🔬",
+  "🧪",
+  "📐",
+  "🗒️",
+  // Recepção e Atendimento
+  "👥",
+  "☎️",
+  "🛎️",
+  "🪑",
+  "🚪",
+  "👋",
+  "😊",
+  "🗣️",
+  "📞",
+  "🤗",
+  // Comercial e Vendas
+  "🛒",
+  "🏪",
+  "💲",
+  "📦",
+  "🚚",
+  "🏷️",
+  "🛍️",
+  "💼",
+  "🤝",
+  "📃",
+  // Segurança e Portaria
+  "🔐",
+  "🔒",
+  "🛡️",
+  "👮",
+  "🚨",
+  "📹",
+  "🔑",
+  "🚧",
+  "⚠️",
+  // Geral
+  "⭐",
+  "✅",
+  "❗",
+  "💡",
+  "🏆",
+  "📌",
+  "🔔",
+  "📅",
+  "🗓️",
+  "🎪",
+];
 
 export default function PopPage() {
+  const [pdfFile, setPdfFile] = useState(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [profile, setProfile] = useState(null);
   const [isAdminOrSupervisor, setIsAdminOrSupervisor] = useState(false);
   const [users, setUsers] = useState([]);
@@ -29,7 +129,11 @@ export default function PopPage() {
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingArticle, setEditingArticle] = useState(null);
-  const [categoryForm, setCategoryForm] = useState({ name: "", icon: "📋" });
+  const [categoryForm, setCategoryForm] = useState({
+    name: "",
+    icon: "📋",
+    userIds: [],
+  });
   const [articleForm, setArticleForm] = useState({
     title: "",
     content: "",
@@ -39,6 +143,15 @@ export default function PopPage() {
   useEffect(() => {
     init();
   }, []);
+
+  function toggleCategoryUser(userId) {
+    setCategoryForm((prev) => ({
+      ...prev,
+      userIds: (prev.userIds || []).includes(userId)
+        ? (prev.userIds || []).filter((id) => id !== userId)
+        : [...(prev.userIds || []), userId],
+    }));
+  }
 
   async function init() {
     const user = await getUser();
@@ -87,11 +200,17 @@ export default function PopPage() {
     setLoading(true);
     setError("");
     setSuccess("");
-    const targetId = isAdminOrSupervisor ? selectedUser?.id : profile?.id;
+
+    if (!categoryForm.userIds || categoryForm.userIds.length === 0) {
+      setError("Selecione pelo menos um funcionário.");
+      setLoading(false);
+      return;
+    }
+
     const { error } = await savePopCategory(
       categoryForm,
       editingCategory,
-      targetId,
+      categoryForm.userIds,
     );
     if (error) {
       setError(error);
@@ -101,9 +220,9 @@ export default function PopPage() {
     setSuccess(editingCategory ? "Categoria atualizada!" : "Categoria criada!");
     setShowCategoryForm(false);
     setEditingCategory(null);
-    setCategoryForm({ name: "", icon: "📋" });
+    setCategoryForm({ name: "", icon: "📋", userIds: [] });
     setLoading(false);
-    loadData(targetId);
+    loadData(selectedUser?.id);
   }
 
   async function handleDeleteCategory(id) {
@@ -131,10 +250,29 @@ export default function PopPage() {
       setLoading(false);
       return;
     }
+
+    // Upload do PDF se houver
+    if (pdfFile && editingArticle) {
+      setUploadingPdf(true);
+      const { error: pdfError } = await uploadArticlePdf(
+        editingArticle.id,
+        pdfFile,
+      );
+      if (pdfError) {
+        setError(pdfError);
+        setUploadingPdf(false);
+        setLoading(false);
+        return;
+      }
+      setUploadingPdf(false);
+      setPdfFile(null);
+    }
+
     setSuccess(editingArticle ? "Artigo atualizado!" : "Artigo criado!");
     setShowArticleForm(false);
     setEditingArticle(null);
     setArticleForm({ title: "", content: "", category_id: "" });
+    setPdfFile(null);
     setLoading(false);
     loadData(targetId);
   }
@@ -251,6 +389,28 @@ export default function PopPage() {
         </div>
       )}
 
+      {/* Busca */}
+      {selectedUser && (
+        <div className="flex items-center gap-2 bg-white rounded-2xl shadow-sm px-4 py-3 mb-6">
+          <span className="text-gray-400">🔍</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar nos POPs por título ou conteúdo..."
+            className="flex-1 text-sm text-gray-700 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-xs text-red-400 hover:text-red-600 transition"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Modal Categoria */}
       {showCategoryForm && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -277,18 +437,64 @@ export default function PopPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Ícone
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {ICONS.map((icon) => (
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-lg border border-gray-200">
+                  {ICONS.map((icon, idx) => (
                     <button
-                      key={icon}
+                      key={`${icon}-${idx}`}
                       type="button"
                       onClick={() => setCategoryForm({ ...categoryForm, icon })}
-                      className={`text-xl p-2 rounded-lg transition ${categoryForm.icon === icon ? "bg-blue-100 ring-2 ring-blue-500" : "bg-gray-100 hover:bg-gray-200"}`}
+                      className={`text-xl p-1.5 rounded-lg transition ${
+                        categoryForm.icon === icon
+                          ? "bg-blue-100 ring-2 ring-blue-500"
+                          : "hover:bg-gray-200"
+                      }`}
                     >
                       {icon}
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Selecionado: {categoryForm.icon}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Funcionários
+                </label>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {users.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleCategoryUser(u.id)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+                        (categoryForm.userIds || []).includes(u.id)
+                          ? "bg-blue-700 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full bg-blue-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {u.avatar_url ? (
+                          <img
+                            src={u.avatar_url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-blue-700 text-xs font-bold">
+                            {u.full_name?.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      {u.full_name}
+                    </button>
+                  ))}
+                </div>
+                {categoryForm.userIds?.length > 0 && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    {categoryForm.userIds.length} funcionário(s) selecionado(s)
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 pt-2">
                 <button
@@ -369,6 +575,22 @@ export default function PopPage() {
                   placeholder="Descreva o passo a passo..."
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  PDF anexo (opcional)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => setPdfFile(e.target.files[0])}
+                  className="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {pdfFile && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    📎 {pdfFile.name}
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -430,7 +652,11 @@ export default function PopPage() {
                       <button
                         onClick={() => {
                           setEditingCategory(cat);
-                          setCategoryForm({ name: cat.name, icon: cat.icon });
+                          setCategoryForm({
+                            name: cat.name,
+                            icon: cat.icon,
+                            userIds: cat.user_ids || [],
+                          });
                           setShowCategoryForm(true);
                         }}
                         className="flex-1 text-xs text-blue-500 hover:bg-blue-800 py-1.5 transition"
@@ -492,6 +718,43 @@ export default function PopPage() {
                 <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                   {selectedArticle.content}
                 </div>
+
+                {/* PDF anexo */}
+                {selectedArticle.pdf_url && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <a
+                      href={selectedArticle.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2.5 rounded-xl transition w-fit"
+                    >
+                      <span>📄</span>
+                      <span className="text-sm font-medium">
+                        {selectedArticle.pdf_name || "Ver PDF"}
+                      </span>
+                    </a>
+                    {isAdminOrSupervisor && (
+                      <button
+                        onClick={async () => {
+                          await removeArticlePdf(selectedArticle.id);
+                          loadData(
+                            isAdminOrSupervisor
+                              ? selectedUser?.id
+                              : profile?.id,
+                          );
+                          setSelectedArticle({
+                            ...selectedArticle,
+                            pdf_url: null,
+                            pdf_name: null,
+                          });
+                        }}
+                        className="text-xs text-red-400 hover:text-red-600 mt-2 block transition"
+                      >
+                        Remover PDF
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -512,27 +775,47 @@ export default function PopPage() {
                     {selectedCategory?.name}
                   </button>
                 )}
-                {filteredArticles.length === 0 ? (
+                {filteredArticles.filter(
+                  (a) =>
+                    !searchQuery ||
+                    a.title
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                    a.content
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase()),
+                ).length === 0 ? (
                   <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
                     <p className="text-gray-400 text-sm">
                       Nenhum artigo nesta categoria ainda.
                     </p>
                   </div>
                 ) : (
-                  filteredArticles.map((article) => (
-                    <button
-                      key={article.id}
-                      onClick={() => setSelectedArticle(article)}
-                      className="w-full bg-white rounded-2xl shadow-sm p-4 text-left hover:shadow-md transition"
-                    >
-                      <p className="font-semibold text-gray-800 text-sm">
-                        {article.title}
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1 line-clamp-2">
-                        {article.content}
-                      </p>
-                    </button>
-                  ))
+                  filteredArticles
+                    .filter(
+                      (a) =>
+                        !searchQuery ||
+                        a.title
+                          ?.toLowerCase()
+                          .includes(searchQuery.toLowerCase()) ||
+                        a.content
+                          ?.toLowerCase()
+                          .includes(searchQuery.toLowerCase()),
+                    )
+                    .map((article) => (
+                      <button
+                        key={article.id}
+                        onClick={() => setSelectedArticle(article)}
+                        className="w-full bg-white rounded-2xl shadow-sm p-4 text-left hover:shadow-md transition"
+                      >
+                        <p className="font-semibold text-gray-800 text-sm">
+                          {article.title}
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1 line-clamp-2">
+                          {article.content}
+                        </p>
+                      </button>
+                    ))
                 )}
               </div>
             )}
