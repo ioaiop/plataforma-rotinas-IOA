@@ -14,6 +14,8 @@ import {
 const ITEMS_PER_PAGE = 8;
 
 export default function ManagePage() {
+  const [filterDateStart, setFilterDateStart] = useState("");
+  const [filterDateEnd, setFilterDateEnd] = useState("");
   const [filterUser, setFilterUser] = useState("");
   const [sectorError, setSectorError] = useState("");
   const [sectorSuccess, setSectorSuccess] = useState("");
@@ -59,6 +61,8 @@ export default function ManagePage() {
       ITEMS_PER_PAGE,
       filterSector || null,
       filterUser || null,
+      filterDateStart || null,
+      filterDateEnd || null,
     );
     if (!result) return;
     setCurrentProfile(result.profile);
@@ -71,7 +75,7 @@ export default function ManagePage() {
   useEffect(() => {
     setCurrentPage(1);
     loadData();
-  }, [filterSector, filterUser]);
+  }, [filterSector, filterUser, filterDateStart, filterDateEnd]);
 
   function openNew() {
     setEditingTask(null);
@@ -641,7 +645,7 @@ export default function ManagePage() {
           </form>
         </div>
       )}
-      <div className="flex gap-3 mb-4 flex-wrap">
+      <div className="flex gap-3 mb-4 flex-wrap items-end">
         <select
           value={filterSector}
           onChange={(e) => setFilterSector(e.target.value)}
@@ -667,7 +671,37 @@ export default function ManagePage() {
             </option>
           ))}
         </select>
-      </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={filterDateStart}
+            onChange={(e) => setFilterDateStart(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="text-gray-400 text-sm">até</span>
+          <input
+            type="date"
+            value={filterDateEnd}
+            onChange={(e) => setFilterDateEnd(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {(filterSector || filterUser || filterDateStart || filterDateEnd) && (
+          <button
+            onClick={() => {
+              setFilterSector("");
+              setFilterUser("");
+              setFilterDateStart("");
+              setFilterDateEnd("");
+            }}
+            className="text-xs text-red-400 hover:text-red-600 transition"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>{" "}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">

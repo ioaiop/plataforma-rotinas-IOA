@@ -83,6 +83,8 @@ export async function getTasksPaginated(
   to,
   filterSectorId = null,
   filterUserId = null,
+  filterDateStart = null,
+  filterDateEnd = null,
 ) {
   const supabase = createClient();
   let query = supabase
@@ -97,6 +99,8 @@ export async function getTasksPaginated(
   if (role === "supervisor") query = query.eq("sector_id", sectorId);
   if (filterSectorId) query = query.eq("sector_id", filterSectorId);
   if (filterUserId) query = query.contains("assigned_users", [filterUserId]);
+  if (filterDateStart) query = query.gte("date_start", filterDateStart);
+  if (filterDateEnd) query = query.lte("date_end", filterDateEnd);
 
   const { data, count } = await query;
   return { data: data || [], count: count || 0 };

@@ -45,6 +45,8 @@ export async function loadManageData(
   itemsPerPage,
   filterSectorId = null,
   filterUserId = null,
+  filterDateStart = null,
+  filterDateEnd = null,
 ) {
   const user = await getUser();
   if (!user) return null;
@@ -59,6 +61,8 @@ export async function loadManageData(
     to,
     filterSectorId,
     filterUserId,
+    filterDateStart,
+    filterDateEnd,
   );
   const users = await getProfiles(profile.unit_id, "admin", null);
   const sectors = await getSectors(profile.unit_id);
