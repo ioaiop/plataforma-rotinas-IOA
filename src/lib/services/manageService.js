@@ -4,6 +4,8 @@ import {
   updateTask,
   deleteTask,
   getTasksPaginated,
+  getTasksByTitle,
+  bulkUpdateTasks,
 } from "@/lib/db/tasks";
 import {
   createSector,
@@ -143,4 +145,13 @@ export async function removeTask(taskId) {
 export async function addSector(name, unitId) {
   const { error } = await createSector(name, unitId);
   return { error };
+}
+
+export async function findSimilarTasks(title, unitId, excludeId) {
+  return await getTasksByTitle(title, unitId, excludeId);
+}
+
+export async function saveBulkTasks(ids, updateData) {
+  const { error } = await bulkUpdateTasks(ids, updateData);
+  return { error: error ? "Erro ao atualizar tarefas." : null };
 }

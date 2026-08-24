@@ -1,4 +1,5 @@
 "use client";
+import { getProfiles } from "@/lib/db/profiles";
 import { formatDateTimeBR } from "@/lib/utils/date";
 import { useSearchParams } from "next/navigation";
 import {
@@ -22,6 +23,9 @@ import {
 } from "@/lib/services/taskService";
 
 function TasksContent() {
+  const [search, setSearch] = useState("");
+  const [filterUser, setFilterUser] = useState("");
+  const [users, setUsers] = useState([]);
   const commentsEndRef = useRef(null);
   const [realtimeChannel, setRealtimeChannel] = useState(null);
   const [statusFilter, setStatusFilter] = useState("");
@@ -45,7 +49,7 @@ function TasksContent() {
 
   useEffect(() => {
     loadData();
-  }, [selectedDate]);
+  }, [selectedDate, filterUser]);
 
   useEffect(() => {
     const taskId = searchParams.get("task");
@@ -82,20 +86,31 @@ function TasksContent() {
     commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments]);
 
-  async function loadData() {
+  async function loadData(fUser = filterUser) {
     const user = await getUser();
     if (!user) return;
     const profileData = await getProfile(user.id);
     setProfile(profileData);
-    setIsAdmin(
-      profileData?.role === "admin" || profileData?.role === "supervisor",
-    );
+    const adminOrSupervisor =
+      profileData?.role === "admin" || profileData?.role === "supervisor";
+    setIsAdmin(adminOrSupervisor);
+
+    if (adminOrSupervisor) {
+      const usersData = await getProfiles(
+        profileData.unit_id,
+        profileData.role,
+        profileData.sector_id,
+      );
+      setUsers(usersData);
+    }
+
     const tasksData = await getTasksByDate(
       selectedDate,
       profileData.unit_id,
       profileData.role,
       user.id,
       profileData.sector_id,
+      fUser || null,
     );
     setTasks(tasksData);
   }
@@ -283,6 +298,59 @@ function TasksContent() {
           </button>
         </div>
 
+        {/* Filtro por funcionário — só admin/supervisor */}
+        {isAdmin && users.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 bg-white rounded-2xl shadow-sm px-4 py-3">
+            <select
+              value={filterUser}
+              onChange={(e) => {
+                setFilterUser(e.target.value);
+                setSelectedTask(null);
+                loadData(e.target.value);
+              }}
+              className="flex-1 text-sm text-gray-700 focus:outline-none"
+            >
+              <option value="">Todos os funcionários</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name}
+                </option>
+              ))}
+            </select>
+            {filterUser && (
+              <button
+                onClick={() => {
+                  setFilterUser("");
+                  setSelectedTask(null);
+                }}
+                className="text-xs text-red-400 hover:text-red-600 transition"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Busca */}
+        <div className="flex items-center gap-2 bg-white rounded-2xl shadow-sm px-4 py-3 mb-4">
+          <span className="text-gray-400">🔍</span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar tarefa por título ou descrição..."
+            className="flex-1 text-sm text-gray-700 focus:outline-none"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="text-xs text-red-400 hover:text-red-600 transition"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+
         <div className="space-y-3">
           {tasks
             .filter(
@@ -290,6 +358,12 @@ function TasksContent() {
                 !statusFilter ||
                 statusFilter === "all" ||
                 t.status === statusFilter,
+            )
+            .filter(
+              (t) =>
+                !search ||
+                t.title?.toLowerCase().includes(search.toLowerCase()) ||
+                t.description?.toLowerCase().includes(search.toLowerCase()),
             )
             .map((task) => (
               <div

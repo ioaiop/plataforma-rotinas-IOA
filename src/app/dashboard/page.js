@@ -411,6 +411,7 @@ export default function DashboardPage() {
               )}
             </div>
           )}
+
           <Link
             href="/dashboard/manual"
             className="bg-gray-300 hover:bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2"
@@ -424,6 +425,17 @@ export default function DashboardPage() {
             🔄 Atualizar
           </button>
         </div>
+      </div>
+
+      {/* Banner institucional */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-2xl p-5 mb-6 text-white">
+        <p className="font-bold text-lg mb-1">Cuidamos de Pessoas</p>
+        <p className="text-blue-100 text-sm leading-relaxed">
+          Antes de formar grandes profissionais, construímos grandes relações.
+          Promovemos um ambiente de confiança, respeito, colaboração e empatia,
+          onde cada pessoa é valorizada e cada atitude contribui para o sucesso
+          de toda a equipe.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">

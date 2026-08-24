@@ -9,11 +9,16 @@ import {
   addSector,
   removeSector,
   checkAndRemoveSector,
+  findSimilarTasks,
+  saveBulkTasks,
 } from "@/lib/services/manageService";
 
 const ITEMS_PER_PAGE = 8;
 
 export default function ManagePage() {
+  const [similarTasks, setSimilarTasks] = useState([]);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [pendingForm, setPendingForm] = useState(null);
   const [filterDateStart, setFilterDateStart] = useState("");
   const [filterDateEnd, setFilterDateEnd] = useState("");
   const [filterUser, setFilterUser] = useState("");
@@ -158,17 +163,117 @@ export default function ManagePage() {
       return;
     }
 
-    const { error } = await saveTask(form, editingTask, currentProfile);
-    if (error) {
-      setError(error);
+    if (editingTask) {
+      console.log("editingTask:", editingTask.title);
+      console.log("currentProfile:", currentProfile?.unit_id);
+      const similar = await findSimilarTasks(
+        editingTask.title,
+        currentProfile.unit_id,
+        editingTask.id,
+      );
+      console.log("similar encontradas:", similar);
+
+      if (similar.length > 0) {
+        setSimilarTasks(similar);
+        setPendingForm(form);
+        setShowBulkConfirm(true);
+        setLoading(false);
+        return;
+      }
+      await doSave(form, editingTask);
       setLoading(false);
       return;
     }
+
+    await doSave(form, null);
+    setLoading(false);
+  }
+
+  async function doSave(formData, task) {
+    const { error } = await saveTask(formData, task, currentProfile);
+    if (error) {
+      setError(error);
+      return;
+    }
     setSuccess(
-      editingTask
-        ? "Tarefa atualizada com sucesso!"
-        : "Tarefa criada com sucesso!",
+      task ? "Tarefa atualizada com sucesso!" : "Tarefa criada com sucesso!",
     );
+    loadData();
+    setShowForm(false);
+  }
+
+  async function handleBulkSave(updateAll) {
+    setLoading(true);
+    setShowBulkConfirm(false);
+
+    const updateData = {
+      title: pendingForm.title,
+      description: pendingForm.description,
+      sector_id: pendingForm.sector_id || null,
+      assigned_to: pendingForm.assigned_users?.[0] || null,
+      assigned_users: pendingForm.assigned_users || [],
+    };
+
+    if (updateAll) {
+      const allIds = [editingTask.id, ...similarTasks.map((t) => t.id)];
+      const { error } = await saveBulkTasks(allIds, updateData);
+      if (error) {
+        setError(error);
+        setLoading(false);
+        return;
+      }
+      setSuccess(`${allIds.length} tarefas atualizadas com sucesso!`);
+    } else {
+      await doSave(pendingForm, editingTask);
+    }
+
+    setSimilarTasks([]);
+    setPendingForm(null);
+    loadData();
+    setShowForm(false);
+    setLoading(false);
+  }
+
+  async function doSave(formData, task) {
+    const { error } = await saveTask(formData, task, currentProfile);
+    if (error) {
+      setError(error);
+      return;
+    }
+    setSuccess(
+      task ? "Tarefa atualizada com sucesso!" : "Tarefa criada com sucesso!",
+    );
+    loadData();
+    setShowForm(false);
+  }
+
+  async function handleBulkSave(updateAll) {
+    setLoading(true);
+    setShowBulkConfirm(false);
+
+    const updateData = {
+      title: pendingForm.title,
+      description: pendingForm.description,
+      sector_id: pendingForm.sector_id || null,
+      assigned_to: pendingForm.assigned_users?.[0] || null,
+      assigned_users: pendingForm.assigned_users || [],
+    };
+
+    if (updateAll) {
+      const allIds = [editingTask.id, ...similarTasks.map((t) => t.id)];
+      const { error } = await saveBulkTasks(allIds, updateData);
+      if (error) {
+        setError(error);
+        setLoading(false);
+        return;
+      }
+      setSuccess(`${allIds.length} tarefas atualizadas com sucesso!`);
+    } else {
+      await doSave(pendingForm, editingTask);
+    }
+
+    setSimilarTasks([]);
+    setPendingForm(null);
     loadData();
     setShowForm(false);
     setLoading(false);
@@ -452,7 +557,7 @@ export default function ManagePage() {
               </label>
 
               {/* Seletor de modo */}
-              <div className="flex gap-1 mb-3">
+              <div className="flex gap-1 mb-3 flex-wrap">
                 {[
                   { value: "single", label: "📅 Dia único" },
                   { value: "period", label: "📆 Período" },
@@ -480,6 +585,113 @@ export default function ManagePage() {
                   </button>
                 ))}
               </div>
+
+              {/* Atalhos rápidos — só no modo dias avulsos */}
+              {calendarMode === "multiple" && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  <span className="text-xs text-gray-400 self-center mr-1">
+                    Atalhos:
+                  </span>
+                  {[
+                    { label: "Seg", day: 1 },
+                    { label: "Ter", day: 2 },
+                    { label: "Qua", day: 3 },
+                    { label: "Qui", day: 4 },
+                    { label: "Sex", day: 5 },
+                    { label: "Sáb", day: 6 },
+                    { label: "Dom", day: 0 },
+                  ].map(({ label, day }) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const year = calendarDate.getFullYear();
+                        const month = calendarDate.getMonth();
+                        const daysInMonth = new Date(
+                          year,
+                          month + 1,
+                          0,
+                        ).getDate();
+                        const newDates = [];
+                        for (let i = 1; i <= daysInMonth; i++) {
+                          const d = new Date(year, month, i);
+                          if (d.getDay() === day) {
+                            newDates.push(formatDate(d));
+                          }
+                        }
+                        setSelectedDates((prev) => {
+                          const allSelected = newDates.every((d) =>
+                            prev.includes(d),
+                          );
+                          if (allSelected)
+                            return prev.filter((d) => !newDates.includes(d));
+                          return [...new Set([...prev, ...newDates])];
+                        });
+                      }}
+                      className="px-2 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const year = calendarDate.getFullYear();
+                      const month = calendarDate.getMonth();
+                      const daysInMonth = new Date(
+                        year,
+                        month + 1,
+                        0,
+                      ).getDate();
+                      const newDates = [];
+                      for (let i = 1; i <= daysInMonth; i++) {
+                        const d = new Date(year, month, i);
+                        if (d.getDay() !== 0 && d.getDay() !== 6) {
+                          newDates.push(formatDate(d));
+                        }
+                      }
+                      setSelectedDates((prev) => {
+                        const allSelected = newDates.every((d) =>
+                          prev.includes(d),
+                        );
+                        if (allSelected)
+                          return prev.filter((d) => !newDates.includes(d));
+                        return [...new Set([...prev, ...newDates])];
+                      });
+                    }}
+                    className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
+                  >
+                    Dias úteis
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const year = calendarDate.getFullYear();
+                      const month = calendarDate.getMonth();
+                      const daysInMonth = new Date(
+                        year,
+                        month + 1,
+                        0,
+                      ).getDate();
+                      const newDates = [];
+                      for (let i = 1; i <= daysInMonth; i++) {
+                        newDates.push(formatDate(new Date(year, month, i)));
+                      }
+                      setSelectedDates((prev) => {
+                        const allSelected = newDates.every((d) =>
+                          prev.includes(d),
+                        );
+                        if (allSelected)
+                          return prev.filter((d) => !newDates.includes(d));
+                        return [...new Set([...prev, ...newDates])];
+                      });
+                    }}
+                    className="px-2 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
+                  >
+                    Mês inteiro
+                  </button>
+                </div>
+              )}
 
               <div className="border border-gray-200 rounded-xl p-3 sm:p-4 bg-gray-50 overflow-x-auto">
                 <div className="min-w-[300px] sm:min-w-full">
@@ -643,6 +855,54 @@ export default function ManagePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {showBulkConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4">
+            <h3 className="font-bold text-gray-800 mb-2">
+              Editar tarefas similares
+            </h3>
+            <p className="text-gray-500 text-sm mb-2">
+              Encontramos <strong>{similarTasks.length + 1} tarefas</strong> com
+              o título:
+            </p>
+            <p className="text-blue-700 font-semibold text-sm bg-blue-50 px-3 py-2 rounded-lg mb-4">
+              &ldquo;{editingTask?.title}&rdquo;{" "}
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              Deseja atualizar apenas esta tarefa ou todas as{" "}
+              {similarTasks.length + 1}?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleBulkSave(true)}
+                disabled={loading}
+                className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition disabled:opacity-50"
+              >
+                {loading
+                  ? "Atualizando..."
+                  : `Atualizar todas (${similarTasks.length + 1})`}
+              </button>
+              <button
+                onClick={() => handleBulkSave(false)}
+                disabled={loading}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-lg text-sm transition disabled:opacity-50"
+              >
+                Atualizar apenas esta
+              </button>
+              <button
+                onClick={() => {
+                  setShowBulkConfirm(false);
+                  setSimilarTasks([]);
+                  setPendingForm(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 text-sm transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div className="flex gap-3 mb-4 flex-wrap items-end">

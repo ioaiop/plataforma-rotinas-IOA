@@ -152,7 +152,17 @@ export default function PopPage() {
   );
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 lg:p-3 max-w-6xl mx-auto">
+      {/* Banner institucional */}
+      <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-2xl p-5 mb-6 text-white">
+        <p className="font-bold text-lg mb-1">Cuidamos de Pessoas</p>
+        <p className="text-blue-100 text-sm leading-relaxed">
+          Antes de formar grandes profissionais, construímos grandes relações.
+          Promovemos um ambiente de confiança, respeito, colaboração e empatia,
+          onde cada pessoa é valorizada e cada atitude contribui para o sucesso
+          de toda a equipe.
+        </p>
+      </div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-800">

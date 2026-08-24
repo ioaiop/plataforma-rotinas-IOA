@@ -6,6 +6,7 @@ export async function getTasksByDate(
   role,
   userId,
   sectorId,
+  filterUserId = null,
 ) {
   const supabase = createClient();
   let query = supabase
@@ -18,8 +19,15 @@ export async function getTasksByDate(
     .eq("unit_id", unitId)
     .order("created_at");
 
-  if (role === "employee") query = query.contains("assigned_users", [userId]);
-  if (role === "supervisor") query = query.eq("sector_id", sectorId);
+  if (role === "employee") {
+    query = query.contains("assigned_users", [userId]);
+  } else if (role === "supervisor" && !filterUserId) {
+    query = query.eq("sector_id", sectorId);
+  }
+
+  if (filterUserId) {
+    query = query.contains("assigned_users", [filterUserId]);
+  }
 
   const { data } = await query;
   return data || [];
@@ -141,4 +149,25 @@ export async function getTaskById(taskId) {
     .eq("id", taskId)
     .single();
   return data;
+}
+
+export async function getTasksByTitle(title, unitId, excludeId = null) {
+  const supabase = createClient();
+  let query = supabase
+    .from("tasks")
+    .select("id, title, date_start, date_end, status")
+    .eq("title", title)
+    .eq("unit_id", unitId);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data } = await query;
+  return data || [];
+}
+
+export async function bulkUpdateTasks(ids, updateData) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ ...updateData, updated_at: new Date().toISOString() })
+    .in("id", ids);
+  return { error };
 }
