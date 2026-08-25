@@ -5,24 +5,24 @@ export async function getPopCategories(userId) {
   const { data } = await supabase
     .from("pop_categories")
     .select("*")
-    .contains("user_ids", [userId])
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
   return data || [];
 }
 
-export async function createPopCategory(name, icon, userIds, createdBy) {
+export async function createPopCategory(name, icon, userId, createdBy) {
   const supabase = createClient();
   const { error } = await supabase
     .from("pop_categories")
-    .insert({ name, icon, user_ids: userIds, created_by: createdBy });
+    .insert({ name, icon, user_id: userId, created_by: createdBy });
   return { error };
 }
 
-export async function updatePopCategory(id, name, icon, userIds) {
+export async function updatePopCategory(id, name, icon) {
   const supabase = createClient();
   const { error } = await supabase
     .from("pop_categories")
-    .update({ name, icon, user_ids: userIds })
+    .update({ name, icon })
     .eq("id", id);
   return { error };
 }

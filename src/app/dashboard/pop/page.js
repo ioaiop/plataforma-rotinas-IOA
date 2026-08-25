@@ -19,9 +19,6 @@ const ICONS = [
   "🦷",
   "💊",
   "🩺",
-  "🧬",
-  "💉",
-  "🩹",
   "🧠",
   // Administrativo e Financeiro
   "💰",
@@ -30,68 +27,50 @@ const ICONS = [
   "📈",
   "💳",
   "🏦",
-  "🧾",
   "📋",
   "📁",
-  "🗂️",
+
   // Limpeza e Manutenção
   "🧹",
   "🧺",
-  "🧼",
   "🧽",
   "🔧",
-  "🔨",
   "⚙️",
-  "🏗️",
   // Comunicação e Marketing
-  "📣",
   "📢",
   "📱",
   "💻",
-  "🖥️",
   "📸",
   "🎯",
   "✉️",
-  "📨",
   "🌐",
   // Educação e Acadêmico
   "🎓",
   "📚",
   "✏️",
   "📝",
-  "🏫",
-  "📖",
   "🔬",
   "🧪",
   "📐",
-  "🗒️",
   // Recepção e Atendimento
   "👥",
   "☎️",
   "🛎️",
-  "🪑",
-  "🚪",
   "👋",
-  "😊",
   "🗣️",
   "📞",
-  "🤗",
   // Comercial e Vendas
   "🛒",
   "🏪",
   "💲",
-  "📦",
   "🚚",
   "🏷️",
-  "🛍️",
   "💼",
   "🤝",
-  "📃",
   // Segurança e Portaria
   "🔐",
   "🔒",
   "🛡️",
-  "👮",
   "🚨",
   "📹",
   "🔑",
@@ -105,9 +84,7 @@ const ICONS = [
   "🏆",
   "📌",
   "🔔",
-  "📅",
   "🗓️",
-  "🎪",
 ];
 
 export default function PopPage() {
@@ -453,9 +430,26 @@ export default function PopPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  Selecionado: {categoryForm.icon}
-                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    Ou digite/cole um emoji:
+                  </span>
+                  <input
+                    type="text"
+                    value={categoryForm.icon}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || val.length <= 2) {
+                        setCategoryForm({ ...categoryForm, icon: val });
+                      }
+                    }}
+                    className="w-16 text-center text-xl border border-gray-300 rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="😀"
+                  />
+                  <span className="text-xs text-gray-400">
+                    Selecionado: {categoryForm.icon}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

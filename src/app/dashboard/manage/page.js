@@ -793,17 +793,26 @@ export default function ManagePage() {
 
                   {/* Resumo */}
                   {calendarMode === "multiple" && selectedDates.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 text-[11px] sm:text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <span>
-                        🗓️ {selectedDates.length} dia(s) selecionado(s)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDates([])}
-                        className="text-red-400 hover:text-red-600 transition text-xs"
-                      >
-                        Limpar
-                      </button>
+                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                      <div className="text-[11px] sm:text-xs text-gray-600 flex items-center justify-between">
+                        <span>
+                          🗓️ {selectedDates.length} dia(s) selecionado(s)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDates([])}
+                          className="text-red-400 hover:text-red-600 transition text-xs"
+                        >
+                          Limpar
+                        </button>
+                      </div>
+                      {selectedDates.length > 180 && (
+                        <p className="text-[11px] text-yellow-600 bg-yellow-50 px-2 py-1.5 rounded-lg">
+                          ⚠️ Você está criando muitas tarefas de uma vez.
+                          Considere dividir em períodos menores para melhor
+                          organização.
+                        </p>
+                      )}
                     </div>
                   )}
 
