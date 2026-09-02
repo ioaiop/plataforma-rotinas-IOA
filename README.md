@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🏥 Plataforma de Rotinas — IOA IOP
 
-## Getting Started
+> Plataforma web interna para controle e gerenciamento de rotinas organizacionais do Instituto de Pós-Graduação em Odontologia.
 
-First, run the development server:
+![Status](https://img.shields.io/badge/status-em%20desenvolvimento-blue)
+![Versão](https://img.shields.io/badge/versão-1.0.0-green)
+![Ano](https://img.shields.io/badge/ano-2026-lightgrey)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🌐 Acesso
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+🔗 [plataforma-rotinas-ioa.vercel.app](https://plataforma-rotinas-ioa.vercel.app)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📋 Sobre o projeto
 
-To learn more about Next.js, take a look at the following resources:
+Sistema interno desenvolvido para o IOA IOP com o objetivo de organizar, distribuir e acompanhar as rotinas diárias dos colaboradores, permitindo controle em tempo real por supervisores e administradores.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tecnologias
 
-## Deploy on Vercel
+| Tecnologia | Uso |
+|---|---|
+| Next.js 16 | Framework frontend |
+| React 18 | Interface de usuário |
+| Tailwind CSS | Estilização |
+| Supabase | Banco de dados, autenticação e storage |
+| Vercel | Hospedagem e deploy |
+| Recharts | Gráficos e estatísticas |
+| jsPDF | Geração de relatórios PDF |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🏢 Unidades
+
+- 📍 Campina Grande — PB
+- 📍 João Pessoa — PB
+
+---
+
+## 📌 Status do projeto
+
+> 🔵 **Em desenvolvimento ativo** — novas funcionalidades sendo implementadas conforme demanda do cliente.
+
+---
+
+## 👨‍💻 Desenvolvido por
+
+**Ivel Cod**
+📸 [@IvelCod](https://instagram.com/IvelCod) no Instagram
+
+---
+
+*© 2026 IOA IOP — Todos os direitos reservados*
