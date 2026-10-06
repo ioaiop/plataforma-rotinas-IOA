@@ -1,6 +1,6 @@
 # 🏥 Plataforma de Rotinas — IOA IOP
 
-> Plataforma web interna para controle e gerenciamento de rotinas organizacionais do Instituto de Pós-Graduação em Odontologia..
+> Plataforma web interna para controle e gerenciamento de rotinas organizacionais do Instituto de Pós-Graduação em Odontologia.
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-blue)
 ![Versão](https://img.shields.io/badge/versão-1.0.0-green)
