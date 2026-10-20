@@ -17,3 +17,15 @@ export async function addComment(taskId, userId, content) {
     .insert({ task_id: taskId, user_id: userId, content });
   return { error };
 }
+
+export async function deleteComment(commentId) {
+  const supabase = createClient();
+  console.log("tentando deletar:", commentId);
+  const { data, error } = await supabase
+    .from("comments")
+    .delete()
+    .eq("id", commentId)
+    .select();
+  console.log("resultado delete:", data, error);
+  return { error };
+}

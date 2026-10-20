@@ -20,6 +20,8 @@ import {
   sendComment,
   addTaskAttachment,
   loadTaskDetails,
+  removeComment,
+  removeAttachment,
 } from "@/lib/services/taskService";
 
 function TasksContent() {
@@ -230,6 +232,36 @@ function TasksContent() {
       alert("Erro inesperado: " + err.message);
     }
     setLoading(false);
+  }
+
+  async function handleDeleteComment(commentId, commentUserId) {
+    const user = await getUser();
+    if (!user) return;
+    console.log("user.id:", user.id);
+    console.log("commentUserId:", commentUserId);
+    console.log("isAdmin:", isAdmin);
+    if (user.id !== commentUserId && !isAdmin) {
+      console.log("bloqueado por permissão");
+      return;
+    }
+    const { error } = await removeComment(commentId);
+    console.log("error:", error);
+    if (!error) {
+      const updated = await getComments(selectedTask.id);
+      console.log("updated comments:", updated);
+      setComments(updated);
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId, attachmentUserId) {
+    const user = await getUser();
+    if (!user) return;
+    if (user.id !== attachmentUserId && !isAdmin) return;
+    const { error } = await removeAttachment(attachmentId);
+    if (!error) {
+      const updated = await getAttachments(selectedTask.id);
+      setAttachments(updated);
+    }
   }
 
   const statusBadge = (status) => {
@@ -543,22 +575,30 @@ function TasksContent() {
 
           <div className="mb-4">
             <p className="text-sm font-semibold text-gray-700 mb-2">Anexos</p>
-            {attachments.length > 0 && (
-              <div className="space-y-1 mb-2">
-                {attachments.map((att) => (
-                  <a
-                    key={att.id}
-                    href={att.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+            {attachments.map((att) => (
+              <div
+                key={att.id}
+                className="flex items-center justify-between gap-2"
+              >
+                <a
+                  href={att.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline flex-1 truncate"
+                >
+                  <span>📎</span>
+                  <span className="truncate">{att.file_name}</span>
+                </a>
+                {(isAdmin || att.user_id === profile?.id) && (
+                  <button
+                    onClick={() => handleDeleteAttachment(att.id, att.user_id)}
+                    className="text-gray-300 hover:text-red-400 transition text-xs flex-shrink-0"
                   >
-                    <span>📎</span>
-                    <span className="truncate">{att.file_name}</span>
-                  </a>
-                ))}
+                    ✕
+                  </button>
+                )}
               </div>
-            )}
+            ))}
             <div className="flex gap-2">
               <input
                 type="file"
@@ -598,12 +638,24 @@ function TasksContent() {
                     )}
                   </div>
                   <div className="flex-1 bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-xs font-semibold text-gray-700">
-                      {comment.profiles?.full_name}
-                    </p>
+                    <div className="flex items-start justify-between">
+                      <p className="text-xs font-semibold text-gray-700">
+                        {comment.profiles?.full_name}
+                      </p>
+                      {(isAdmin || comment.user_id === profile?.id) && (
+                        <button
+                          onClick={() =>
+                            handleDeleteComment(comment.id, comment.user_id)
+                          }
+                          className="text-gray-300 hover:text-red-400 transition text-xs ml-2"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">{comment.content}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {formatDateTimeBR(comment.created_at)}{" "}
+                      {formatDateTimeBR(comment.created_at)}
                     </p>
                   </div>
                 </div>

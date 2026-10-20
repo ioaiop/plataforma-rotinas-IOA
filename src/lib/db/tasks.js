@@ -22,7 +22,9 @@ export async function getTasksByDate(
   if (role === "employee") {
     query = query.contains("assigned_users", [userId]);
   } else if (role === "supervisor" && !filterUserId) {
-    query = query.eq("sector_id", sectorId);
+    query = query.or(
+      `sector_id.eq.${sectorId},assigned_users.cs.{"${userId}"}`,
+    );
   }
 
   if (filterUserId) {

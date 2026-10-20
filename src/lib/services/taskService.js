@@ -7,6 +7,20 @@ import { addComment, getComments } from "@/lib/db/comments";
 import { uploadAttachment, getAttachments } from "@/lib/db/attachments";
 import { getMentionedUsers } from "@/lib/db/mentions";
 import { extractMentions } from "@/lib/utils/mentions";
+import { deleteComment } from "@/lib/db/comments";
+import { deleteAttachment } from "@/lib/db/attachments";
+
+export async function removeComment(commentId) {
+  console.log("removeComment chamado com:", commentId);
+  const { error } = await deleteComment(commentId);
+  console.log("deleteComment retornou:", error);
+  return { error };
+}
+
+export async function removeAttachment(attachmentId) {
+  const { error } = await deleteAttachment(attachmentId);
+  return { error };
+}
 
 export async function checkInTask(task) {
   const user = await getUser();
