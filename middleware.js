@@ -36,7 +36,9 @@ export async function middleware(request) {
     !request.nextUrl.pathname.startsWith("/manifest") &&
     !request.nextUrl.pathname.endsWith(".webmanifest") &&
     !request.nextUrl.pathname.startsWith("/sw.js") &&
-    !request.nextUrl.pathname.startsWith("/icon-")
+    !request.nextUrl.pathname.startsWith("/icon-") &&
+    !request.nextUrl.pathname.endsWith(".mp4") &&
+    !request.nextUrl.pathname.endsWith(".png")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
