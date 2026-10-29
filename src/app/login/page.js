@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn, signOut, resetPassword, getProfile } from "@/lib/auth";
+
 const UNITS = [
   {
     id: "4bde7bb3-abc3-49df-949d-91cc21c53b69",
@@ -33,6 +34,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const videoRef1 = useRef(null);
+  const videoRef2 = useRef(null);
+
+  useEffect(() => {
+    if (videoRef1.current) videoRef1.current.playbackRate = 0.75;
+  }, []);
+
+  // ============================================
+  // VELOCIDADE DO VÍDEO DE FUNDO
+  // Altere o valor abaixo para controlar a velocidade
+  // 0.25 = muito lento | 0.5 = metade | 0.75 = levemente lento | 1.0 = normal
+  // ============================================
+  useEffect(() => {
+    if (videoRef2.current) videoRef2.current.playbackRate = 0.75;
+  }, [selectedUnit]);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -80,8 +97,19 @@ export default function LoginPage() {
 
   if (!selectedUnit) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-950 to-blue-800 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        <video
+          ref={videoRef1}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          <source src="/videoioa.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-blue-950/70 z-10" />
+        <div className="relative z-20 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
               <img
@@ -116,156 +144,200 @@ export default function LoginPage() {
               </button>
             ))}
           </div>
+          <p className="text-center text-blue-200 text-xs mt-8">
+            Desenvolvido por{" "}
+            <a
+              href="https://instagram.com/IvelCod"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white font-semibold hover:underline"
+            >
+              Ivel Cod
+            </a>
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={`min-h-screen bg-gradient-to-br ${selectedUnit.color} flex items-center justify-center p-4`}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
-            <img
-              src="/login.png"
-              alt="Logo"
-              className="w-full h-full object-contain"
-            />
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      <video
+        ref={videoRef2}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover z-0"
+      >
+        <source src="/videoioa.mp4" type="video/mp4" />
+      </video>
+      <div
+        className={`absolute inset-0 bg-gradient-to-br ${selectedUnit.color} opacity-80 z-10`}
+      />
+      <div className="relative z-20 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+              <img
+                src="/login.png"
+                alt="Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Plataforma de Rotinas
+            </h1>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedUnit.badge}`}
+              >
+                📍 {selectedUnit.name}
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedUnit(null);
+                  setError("");
+                  setEmail("");
+                  setPassword("");
+                }}
+                className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+              >
+                Trocar
+              </button>
+            </div>
+            <p className="text-gray-500 text-sm mt-2">
+              {resetMode ? "Recuperação de senha" : "Faça login para continuar"}
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Plataforma de Rotinas
-          </h1>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedUnit.badge}`}
+
+          {!resetMode && (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full ${selectedUnit.button} text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50`}
+              >
+                {loading ? "Entrando..." : "Entrar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMode(true);
+                  setError("");
+                }}
+                className="w-full text-sm text-gray-500 hover:underline text-center"
+              >
+                Esqueci minha senha
+              </button>
+            </form>
+          )}
+
+          {resetMode && !resetSent && (
+            <form onSubmit={handleReset} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  E-mail cadastrado
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full ${selectedUnit.button} text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50`}
+              >
+                {loading ? "Enviando..." : "Enviar link de recuperação"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMode(false);
+                  setError("");
+                }}
+                className="w-full text-sm text-gray-500 hover:underline text-center"
+              >
+                Voltar ao login
+              </button>
+            </form>
+          )}
+
+          {resetMode && resetSent && (
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-green-600 text-2xl">✓</span>
+              </div>
+              <p className="text-gray-700 text-sm">
+                Link de recuperação enviado para <strong>{email}</strong>.
+                Verifique sua caixa de entrada.
+              </p>
+              <button
+                onClick={() => {
+                  setResetMode(false);
+                  setResetSent(false);
+                  setError("");
+                }}
+                className="w-full text-sm text-blue-600 hover:underline"
+              >
+                Voltar ao login
+              </button>
+            </div>
+          )}
+          <p className="text-center text-gray-400 text-xs mt-6">
+            Desenvolvido por{" "}
+            <a
+              href="https://instagram.com/IvelCod"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-500 font-semibold hover:underline"
             >
-              📍 {selectedUnit.name}
-            </span>
-            <button
-              onClick={() => {
-                setSelectedUnit(null);
-                setError("");
-                setEmail("");
-                setPassword("");
-              }}
-              className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
-            >
-              Trocar
-            </button>
-          </div>
-          <p className="text-gray-500 text-sm mt-2">
-            {resetMode ? "Recuperação de senha" : "Faça login para continuar"}
+              Ivel Cod
+            </a>
           </p>
         </div>
-
-        {!resetMode && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                E-mail
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Senha
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full ${selectedUnit.button} text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50`}
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setResetMode(true);
-                setError("");
-              }}
-              className="w-full text-sm text-gray-500 hover:underline text-center"
-            >
-              Esqueci minha senha
-            </button>
-          </form>
-        )}
-
-        {resetMode && !resetSent && (
-          <form onSubmit={handleReset} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                E-mail cadastrado
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 ${selectedUnit.ring}`}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full ${selectedUnit.button} text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-50`}
-            >
-              {loading ? "Enviando..." : "Enviar link de recuperação"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setResetMode(false);
-                setError("");
-              }}
-              className="w-full text-sm text-gray-500 hover:underline text-center"
-            >
-              Voltar ao login
-            </button>
-          </form>
-        )}
-
-        {resetMode && resetSent && (
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-green-600 text-2xl">✓</span>
-            </div>
-            <p className="text-gray-700 text-sm">
-              Link de recuperação enviado para <strong>{email}</strong>.
-              Verifique sua caixa de entrada.
-            </p>
-            <button
-              onClick={() => {
-                setResetMode(false);
-                setResetSent(false);
-                setError("");
-              }}
-              className="w-full text-sm text-blue-600 hover:underline"
-            >
-              Voltar ao login
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
