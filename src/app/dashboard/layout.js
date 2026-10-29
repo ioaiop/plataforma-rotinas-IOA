@@ -27,8 +27,22 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!profile) return;
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
+
+    // Só busca se a aba estiver visível (intervalo de 60s)
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") loadNotifications();
+    }, 60000);
+
+    // Ao voltar para a aba, atualiza na hora
+    function handleVisibility() {
+      if (document.visibilityState === "visible") loadNotifications();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [profile]);
 
   useEffect(() => {
@@ -53,9 +67,8 @@ export default function DashboardLayout({ children }) {
   }
 
   async function loadNotifications() {
-    const user = await getUser();
-    if (!user) return;
-    const data = await getNotifications(user.id);
+    if (!profile) return;
+    const data = await getNotifications(profile.id);
     setNotifications(data);
   }
 
